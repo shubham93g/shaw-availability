@@ -94,42 +94,20 @@ shaw_availability/
 
 ## Scheduling
 
-GitHub Actions cron scheduling proved unreliable, so scans aren't triggered
-by `cron`. Instead, `.github/workflows/scan.yml` runs only on
-`workflow_dispatch` (manual, from the Actions tab, or via `gh workflow run`).
-GitHub Pages is published the standard way, via GitHub Actions
-(`actions/upload-pages-artifact` + `actions/deploy-pages`), and is skipped if
-the scan run is cancelled.
+`.github/workflows/scan.yml` runs on GitHub Actions' native
+`schedule: cron` (every 2 hours, `0 */2 * * *`), plus `workflow_dispatch` for
+manual runs from the Actions tab or via `gh workflow run`. GitHub Pages is
+published the standard way (`actions/upload-pages-artifact` +
+`actions/deploy-pages`), and is skipped if the scan run is cancelled.
 
-To keep scans running every 2 hours, a macOS `launchd` LaunchAgent runs
-[`scripts/launchd/run-trigger.sh`](scripts/launchd/run-trigger.sh), a thin
-wrapper that logs a UTC timestamp and calls `gh workflow run` — no local repo
-checkout required at scan time, and it survives reboots/logouts. Agent
-template: [`scripts/launchd/com.shubham93g.shaw-availability.trigger-scan.plist`](scripts/launchd/com.shubham93g.shaw-availability.trigger-scan.plist).
-
-Manage it with [`scripts/launchd/manage.sh`](scripts/launchd/manage.sh):
-
-```bash
-scripts/launchd/manage.sh install   # install the plist + wrapper script and load it
-scripts/launchd/manage.sh status    # check if it's loaded and its last run state
-scripts/launchd/manage.sh update    # re-install both (after editing them) and reload
-scripts/launchd/manage.sh stop      # unload it (won't run again until resume/install)
-scripts/launchd/manage.sh resume    # load it again after stop
-```
-
-`install`/`update` copy `run-trigger.sh` to
-`~/Library/Application Support/shaw-availability/` rather than running it
-from the repo in place — `launchd` fails to exec scripts living under
-`~/Documents` (or Desktop/Downloads) with "Operation not permitted" due to
-macOS's TCC protection on those folders, so the installed copy lives outside
-them.
-
-Requires the `gh` CLI installed and authenticated (`gh auth login`) with a
-token that has the `workflow` scope. Each trigger appends a timestamped line
-to `~/Library/Logs/shaw-availability-trigger.log`, so you have a local record
-of firings without needing to query the GitHub API. This is macOS-specific
-(unlike the old script, which was pure Python and cross-platform) since
-scheduling happens from this machine.
+This was tried once before and dropped in favor of a locally-run trigger
+(first a Python loop, later a macOS `launchd` agent pushing
+`workflow_dispatch` via `gh`). Both were abandoned: they only work while the
+triggering Mac is actually awake, and this machine idle-sleeps after ~5
+minutes of inactivity, so the local trigger silently missed most of its
+scheduled runs. GitHub's own cron isn't perfectly precise either (schedules
+can drift, and get suspended after 60 days of repo inactivity), but it
+doesn't depend on any one machine being awake, which matters more here.
 
 ## Not yet built
 
