@@ -1,7 +1,7 @@
 # shaw-availability-cron
 
 A Cloudflare Worker that replaces GitHub Actions' native `schedule: cron`.
-Hourly, 7am-11pm Singapore time, it calls GitHub's `workflow_dispatch` API to kick off
+Every 30 minutes it calls GitHub's `workflow_dispatch` API to kick off
 `../.github/workflows/scan.yml`. GitHub's own schedule cron can drift or get
 silently suspended after 60 days of repo inactivity; a Worker on a Cron
 Trigger doesn't have either problem and doesn't depend on any local machine
@@ -41,14 +41,14 @@ being awake.
 ## Verifying it works
 
 - After `wrangler deploy`, the Cloudflare dashboard (Workers & Pages →
-  `shaw-availability-cron` → Triggers) should list the `0 0-15,23 * * *`
-  Cron Trigger (hourly, 7am-11pm Singapore time / UTC 23:00 and 00:00-15:00).
+  `shaw-availability-cron` → Triggers) should list the `*/30 * * * *`
+  Cron Trigger.
 - To fire a test run without waiting for the schedule, use the dashboard's
   "Trigger Cron Trigger" button under the Triggers tab, or run locally:
   ```bash
   wrangler dev
   # in another terminal:
-  curl "http://localhost:8787/__scheduled?cron=0+0-15,23+*+*+*"
+  curl "http://localhost:8787/__scheduled?cron=*/30+*+*+*+*"
   ```
 - Either way, check the repo's Actions tab — a new `scan.yml` run should
   start within a few seconds.
