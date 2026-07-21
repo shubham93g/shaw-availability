@@ -97,8 +97,8 @@ shaw_availability/
 GitHub Actions cron scheduling proved unreliable, so scans are no longer
 triggered by `cron`. Instead, `.github/workflows/scan.yml` runs on
 `workflow_dispatch` (manual, from the Actions tab) and on `push` to the
-`.trigger` file. GitHub Pages is published from the `gh-pages` branch
-(pushed by the workflow via `peaceiris/actions-gh-pages`).
+`.trigger` file. GitHub Pages is published the standard way, via GitHub
+Actions (`actions/upload-pages-artifact` + `actions/deploy-pages`).
 
 To keep scans running every 2 hours, run this locally (Windows or Mac —
 pure Python, no extra dependencies beyond `git` and `requirements.txt`):
@@ -108,18 +108,11 @@ python scripts/trigger_scan.py
 ```
 
 It loops forever: each cycle it bumps `.trigger` and pushes to `main`,
-which fires the GitHub Actions scan+publish above. If that push fails for
-any reason (no network, GitHub outage, etc.), it automatically falls back
-to running `main.py` locally and publishing the report straight to
-`gh-pages` itself, bypassing Actions for that cycle. Keep the terminal
-running it open (or run it under `tmux`/`screen` on Mac, or a background
-console on Windows) — it's a persistent loop, not a scheduled task.
-
-To test the fallback path on its own, without waiting for a real failure:
-
-```bash
-python scripts/trigger_scan.py --force-fallback
-```
+which fires the GitHub Actions scan+publish above. GitHub Actions does the
+actual scan and Pages publish — this script's only job is to trigger it on
+a schedule. Keep the terminal running it open (or run it under
+`tmux`/`screen` on Mac, or a background console on Windows) — it's a
+persistent loop, not a scheduled task.
 
 ## Not yet built
 
