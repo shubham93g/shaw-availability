@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from . import config
+from . import config, seat_geometry
 from .models import DayAggregate, SeatElement, ShowStats, ShowTime
 
 
@@ -18,6 +18,8 @@ def compute_show_stats(show: ShowTime, elements: list[SeatElement]) -> ShowStats
 
     denom = available + sold + blocked + on_hold
     availability_pct = (available / denom * 100) if denom else 0.0
+
+    best_seats_available = seat_geometry.best_available_seat_ranges(elements)
 
     anomaly = _detect_anomaly(show.seating_status, available, availability_pct)
 
@@ -36,6 +38,7 @@ def compute_show_stats(show: ShowTime, elements: list[SeatElement]) -> ShowStats
         unknown=unknown,
         unknown_codes=dict(unknown_codes),
         availability_pct=availability_pct,
+        best_seats_available=best_seats_available,
         anomaly=anomaly,
     )
 

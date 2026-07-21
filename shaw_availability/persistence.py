@@ -42,6 +42,7 @@ def append_history_csv(result: ScanResult, base_dir: Path) -> Path:
     for show in result.shows:
         row = dataclasses.asdict(show)
         row["unknown_codes"] = json.dumps(row["unknown_codes"])
+        row["best_seats_available"] = json.dumps(row["best_seats_available"])
         row["scanned_at"] = result.scan_started_at
         rows.append(row)
 
@@ -67,6 +68,8 @@ def _write_dataclass_csv(path: Path, items: list) -> None:
         row = dataclasses.asdict(item)
         if "unknown_codes" in row:
             row["unknown_codes"] = json.dumps(row["unknown_codes"])
+        if "best_seats_available" in row:
+            row["best_seats_available"] = json.dumps(row["best_seats_available"])
         rows.append(row)
 
     fieldnames = list(rows[0].keys())

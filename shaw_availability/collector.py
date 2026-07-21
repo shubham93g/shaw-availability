@@ -79,6 +79,8 @@ def parse_seat_elements(raw_elements: list[dict]) -> list[SeatElement]:
                 row=raw.get("rowReference", ""),
                 column=raw.get("columnReference", ""),
                 status_code=status_code,
+                x=raw.get("anchorCoordinateX", 0.0),
+                y=raw.get("anchorCoordinateY", 0.0),
             )
         )
     return elements

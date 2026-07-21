@@ -34,4 +34,10 @@ SCAN_DAYS_DEFAULT = 14
 KNOWN_SEATING_STATUSES = {"AV", "SF", "SO"}
 KNOWN_SEAT_STATUSES = {"AV", "SO", "BL", "OH"}
 
+SEATING_STATUS_LABELS = {
+    "AV": "Available",
+    "SF": "Selling Fast",
+    "SO": "Sold Out",
+}
+
 OUTPUT_DIR = Path("output")

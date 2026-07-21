@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from . import stats
+from . import config, stats
 from .models import FailedCall, ScanResult, ShowStats
 
 
@@ -50,13 +50,23 @@ def build_report(result: ScanResult) -> ReportData:
         shows_that_day = [s for s in result.shows if s.display_date == day.date]
         for show in sorted(shows_that_day, key=lambda s: (s.venue_name, s.display_time)):
             unknown_suffix = f"  UNK {show.unknown:3d}" if show.unknown else ""
+            status_label = config.SEATING_STATUS_LABELS.get(
+                show.api_seating_status, show.api_seating_status
+            )
+            best_seats_str = (
+                ", ".join(show.best_seats_available)
+                if show.best_seats_available
+                else "-"
+            )
             lines.append(
                 f"  {show.display_time:>8}  {show.venue_name:<{venue_width}} "
                 f"{show.movie_title:<{movie_width}}  "
                 f"{show.availability_pct:5.1f}%  "
-                f"(AV {show.available:3d}/{show.total_seats:3d})"
-                f"{unknown_suffix}  api={show.api_seating_status}"
+                f"(AV {show.available:3d}/{show.total_seats:3d})  "
+                f"{status_label:<13}"
+                f"{unknown_suffix}"
                 + ("  [ANOMALY]" if show.anomaly else "")
+                + f"  Best Seats: {best_seats_str}"
             )
         day_sections.append(ReportSection(title=day.date, lines=lines))
 
