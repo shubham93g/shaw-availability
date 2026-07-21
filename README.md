@@ -94,25 +94,42 @@ shaw_availability/
 
 ## Scheduling
 
-GitHub Actions cron scheduling proved unreliable, so scans are no longer
-triggered by `cron`. Instead, `.github/workflows/scan.yml` runs on
-`workflow_dispatch` (manual, from the Actions tab) and on `push` to the
-`.trigger` file. GitHub Pages is published the standard way, via GitHub
-Actions (`actions/upload-pages-artifact` + `actions/deploy-pages`).
+GitHub Actions cron scheduling proved unreliable, so scans aren't triggered
+by `cron`. Instead, `.github/workflows/scan.yml` runs only on
+`workflow_dispatch` (manual, from the Actions tab, or via `gh workflow run`).
+GitHub Pages is published the standard way, via GitHub Actions
+(`actions/upload-pages-artifact` + `actions/deploy-pages`), and is skipped if
+the scan run is cancelled.
 
-To keep scans running every 2 hours, run this locally (Windows or Mac —
-pure Python, no extra dependencies beyond `git` and `requirements.txt`):
+To keep scans running every 2 hours, a macOS `launchd` LaunchAgent runs
+[`scripts/launchd/run-trigger.sh`](scripts/launchd/run-trigger.sh), a thin
+wrapper that logs a UTC timestamp and calls `gh workflow run` — no local repo
+checkout required at scan time, and it survives reboots/logouts. Agent
+template: [`scripts/launchd/com.shubham93g.shaw-availability.trigger-scan.plist`](scripts/launchd/com.shubham93g.shaw-availability.trigger-scan.plist).
+
+Manage it with [`scripts/launchd/manage.sh`](scripts/launchd/manage.sh):
 
 ```bash
-python scripts/trigger_scan.py
+scripts/launchd/manage.sh install   # install the plist + wrapper script and load it
+scripts/launchd/manage.sh status    # check if it's loaded and its last run state
+scripts/launchd/manage.sh update    # re-install both (after editing them) and reload
+scripts/launchd/manage.sh stop      # unload it (won't run again until resume/install)
+scripts/launchd/manage.sh resume    # load it again after stop
 ```
 
-It loops forever: each cycle it bumps `.trigger` and pushes to `main`,
-which fires the GitHub Actions scan+publish above. GitHub Actions does the
-actual scan and Pages publish — this script's only job is to trigger it on
-a schedule. Keep the terminal running it open (or run it under
-`tmux`/`screen` on Mac, or a background console on Windows) — it's a
-persistent loop, not a scheduled task.
+`install`/`update` copy `run-trigger.sh` to
+`~/Library/Application Support/shaw-availability/` rather than running it
+from the repo in place — `launchd` fails to exec scripts living under
+`~/Documents` (or Desktop/Downloads) with "Operation not permitted" due to
+macOS's TCC protection on those folders, so the installed copy lives outside
+them.
+
+Requires the `gh` CLI installed and authenticated (`gh auth login`) with a
+token that has the `workflow` scope. Each trigger appends a timestamped line
+to `~/Library/Logs/shaw-availability-trigger.log`, so you have a local record
+of firings without needing to query the GitHub API. This is macOS-specific
+(unlike the old script, which was pure Python and cross-platform) since
+scheduling happens from this machine.
 
 ## Not yet built
 

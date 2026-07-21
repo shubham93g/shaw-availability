@@ -1,9 +1,6 @@
 name: Shaw IMAX Availability Scan
 
 on:
-  push:
-    branches: [main]
-    paths: ['.trigger']
   workflow_dispatch: {}
 
 permissions:
@@ -63,7 +60,7 @@ jobs:
           path: site
 
   deploy:
-    if: always()
+    if: ${{ !cancelled() }}
     needs: scan
     runs-on: ubuntu-latest
     environment:
