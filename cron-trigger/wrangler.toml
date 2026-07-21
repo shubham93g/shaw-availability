@@ -1,11 +1,16 @@
 name = "shaw-availability-cron"
 main = "src/index.js"
 compatibility_date = "2026-07-21"
+workers_dev = false
 
 [triggers]
 # Hourly, 7am-11pm Singapore time (UTC+8, no DST). SGT 07:00-23:00 is
 # UTC 23:00 (previous day) through UTC 15:00.
 crons = ["0 0-15,23 * * *"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 [vars]
 GITHUB_OWNER = "shubham93g"

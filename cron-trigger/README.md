@@ -56,3 +56,11 @@ being awake.
 ## Changing the schedule
 
 Edit the `crons` array in `wrangler.toml`, then `wrangler deploy` again.
+
+## Viewing logs
+
+`[observability]` in `wrangler.toml` persists invocation logs (not just live
+tailing), viewable at Workers & Pages → `shaw-availability-cron` → Logs in
+the Cloudflare dashboard — each entry includes whether the GitHub dispatch
+call succeeded or threw. For live tailing while testing, `wrangler tail`
+also works but only shows events from when you start it.
