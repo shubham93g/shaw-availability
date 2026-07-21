@@ -146,7 +146,10 @@ def run_scan(
         fetch = collect_day(session, day_str, failed_calls)
         dates_scanned.append(day_str)
 
-        if fetch.call_succeeded and not fetch.shows:
+        # Today's own showtimes may have already elapsed by the time this
+        # runs, so an empty result for today (offset 0) alone must never be
+        # treated as "reached the edge of the schedule" — only offset >= 1 can.
+        if offset > 0 and fetch.call_succeeded and not fetch.shows:
             logger.debug("%s: no showtimes found — stopping scan", day_str)
             stop_reason = "empty_date_hit"
             break

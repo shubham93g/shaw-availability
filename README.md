@@ -8,8 +8,10 @@ IMAX showtimes are, across all venues, over the next two weeks.
 ## What it does
 
 1. Calls `get_show_times` once per date, starting today, for up to 14 days —
-   stopping early the first time a date comes back with zero showtimes (the
-   edge of Shaw's published schedule).
+   stopping early the first time a date *after today* comes back with zero
+   showtimes (the edge of Shaw's published schedule). Today's own count is
+   never used to stop the scan, since by the time this runs today's
+   showtimes may have already screened.
 2. For every showtime found, calls `get_layouts` once to pull the full seat
    map for that performance.
 3. Computes seat-availability stats per show, per day, and for the whole
