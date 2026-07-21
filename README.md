@@ -96,20 +96,26 @@ shaw_availability/
 
 ## Scheduling
 
-`.github/workflows/scan.yml` runs on GitHub Actions' native
-`schedule: cron` (every 30 minutes, `*/30 * * * *`), plus `workflow_dispatch` for
-manual runs from the Actions tab or via `gh workflow run`. GitHub Pages is
-published the standard way (`actions/upload-pages-artifact` +
-`actions/deploy-pages`), and is skipped if the scan run is cancelled.
+`.github/workflows/scan.yml` only reacts to `workflow_dispatch` — it no
+longer self-schedules. Runs are triggered externally, hourly from 7am-11pm
+Singapore time, by
+a Cloudflare Worker on a Cron Trigger (`cron-trigger/`) that calls GitHub's
+`workflow_dispatch` API. GitHub Pages is published the standard way
+(`actions/upload-pages-artifact` + `actions/deploy-pages`), and is skipped
+if the scan run is cancelled.
 
-This was tried once before and dropped in favor of a locally-run trigger
-(first a Python loop, later a macOS `launchd` agent pushing
-`workflow_dispatch` via `gh`). Both were abandoned: they only work while the
-triggering Mac is actually awake, and this machine idle-sleeps after ~5
-minutes of inactivity, so the local trigger silently missed most of its
-scheduled runs. GitHub's own cron isn't perfectly precise either (schedules
-can drift, and get suspended after 60 days of repo inactivity), but it
-doesn't depend on any one machine being awake, which matters more here.
+This is the third scheduling mechanism this project has used. The first two
+were a locally-run trigger (first a Python loop, later a macOS `launchd`
+agent pushing `workflow_dispatch` via `gh`) and, after that, GitHub Actions'
+own `schedule: cron`. The local trigger was abandoned because it only works
+while the triggering Mac is actually awake, and this machine idle-sleeps
+after ~5 minutes of inactivity, so it silently missed most scheduled runs.
+GitHub's native `schedule` cron fixed that (it doesn't depend on any one
+machine being awake), but turned out to have its own reliability problems —
+schedules can drift, and are silently suspended after 60 days of repo
+inactivity. A Cloudflare Worker gets the "doesn't depend on a machine being
+awake" property of GitHub's cron without those drift/suspension issues. See
+`cron-trigger/README.md` for setup and how to fire a manual test run.
 
 ## Not yet built
 

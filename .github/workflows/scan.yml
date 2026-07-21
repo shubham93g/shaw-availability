@@ -1,8 +1,6 @@
 name: Shaw IMAX Availability Scan
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'
   workflow_dispatch: {}
 
 permissions:
