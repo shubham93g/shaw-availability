@@ -8,7 +8,7 @@ from .models import FailedCall, ScanResult, ShowStats
 
 
 def _with_weekday(date_str: str) -> str:
-    weekday = datetime.strptime(date_str, "%Y-%m-%d").strftime("%A")
+    weekday = datetime.strptime(date_str, "%Y-%m-%d").strftime("%a")
     return f"{date_str} ({weekday})"
 
 
