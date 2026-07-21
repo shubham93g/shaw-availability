@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import logging
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from pathlib import Path
 
 from . import api_client, collector, config, persistence, report
@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     session = api_client.build_session()
     result = collector.run_scan(session, start_date=start_date, max_days=args.days)
 
-    run_dir = persistence.make_run_dir(args.output_dir, datetime.now(timezone.utc))
+    run_dir = persistence.make_run_dir(args.output_dir, datetime.now(config.SGT))
     persistence.save_scan_result_json(result, run_dir)
     persistence.save_shows_csv(result, run_dir)
     persistence.save_days_csv(result, run_dir)

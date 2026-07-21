@@ -1,0 +1,76 @@
+name: Shaw IMAX Availability Scan
+
+on:
+  schedule:
+    # Cron is always UTC on GitHub Actions.
+    # 0,3,6,9,12,15 UTC = 08,11,14,17,20,23 SGT — every 3h during Singapore waking hours,
+    # skipping the overnight window (23:00-08:00 SGT) when nobody's checking availability.
+    - cron: '0 0,3,6,9,12,15 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scan
+        run: |
+          set -o pipefail
+          python main.py 2>&1 | tee report.txt
+
+      - name: Publish report to job summary
+        if: always()
+        run: |
+          {
+            echo "### Shaw IMAX Availability Report — $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')"
+            echo '```'
+            cat report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build static report page
+        if: always()
+        run: |
+          mkdir -p site
+          {
+            echo "<!doctype html><html><head><meta charset='utf-8'>"
+            echo "<title>Shaw IMAX Availability</title></head><body>"
+            echo "<h1>Shaw IMAX Availability Report</h1>"
+            echo "<p>Generated: $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')</p>"
+            echo "<pre>"
+            sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' report.txt
+            echo "</pre></body></html>"
+          } > site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        if: always()
+        with:
+          path: site
+
+  deploy:
+    if: always()
+    needs: scan
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

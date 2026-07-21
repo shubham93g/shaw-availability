@@ -10,7 +10,7 @@ from .models import ScanResult
 
 
 def make_run_dir(base_dir: Path, timestamp: datetime) -> Path:
-    run_dir = base_dir / timestamp.strftime("%Y%m%dT%H%M%SZ")
+    run_dir = base_dir / timestamp.strftime("%Y%m%dT%H%M%S+0800")
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
 
