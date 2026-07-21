@@ -95,7 +95,7 @@ shaw_availability/
 ## Scheduling
 
 `.github/workflows/scan.yml` runs on GitHub Actions' native
-`schedule: cron` (every 2 hours, `0 */2 * * *`), plus `workflow_dispatch` for
+`schedule: cron` (every 30 minutes, `*/30 * * * *`), plus `workflow_dispatch` for
 manual runs from the Actions tab or via `gh workflow run`. GitHub Pages is
 published the standard way (`actions/upload-pages-artifact` +
 `actions/deploy-pages`), and is skipped if the scan run is cancelled.
