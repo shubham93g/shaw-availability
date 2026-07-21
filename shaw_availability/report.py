@@ -36,6 +36,9 @@ def build_report(result: ScanResult) -> ReportData:
         f"Failed API calls: {len(result.failed_calls)}",
     ]
 
+    venue_width = max((len(s.venue_name) for s in result.shows), default=1)
+    movie_width = max((len(s.movie_title) for s in result.shows), default=1)
+
     day_sections = []
     for day in result.day_aggregates:
         if day.show_count == 0:
@@ -48,8 +51,9 @@ def build_report(result: ScanResult) -> ReportData:
         for show in sorted(shows_that_day, key=lambda s: (s.venue_name, s.display_time)):
             unknown_suffix = f"  UNK {show.unknown:3d}" if show.unknown else ""
             lines.append(
-                f"  {show.display_time:>8}  {show.venue_name:<20} {show.movie_title:<25} "
-                f"avail {show.availability_pct:5.1f}%  "
+                f"  {show.display_time:>8}  {show.venue_name:<{venue_width}} "
+                f"{show.movie_title:<{movie_width}}  "
+                f"{show.availability_pct:5.1f}%  "
                 f"(AV {show.available:3d}/{show.total_seats:3d})"
                 f"{unknown_suffix}  api={show.api_seating_status}"
                 + ("  [ANOMALY]" if show.anomaly else "")
