@@ -134,27 +134,27 @@ def run_scan(
     shows: list[ShowStats] = []
     stop_reason = "reached_max_days"
 
-    logger.info("Starting scan: %d day(s) from %s", max_days, start_date.isoformat())
+    logger.debug("Starting scan: %d day(s) from %s", max_days, start_date.isoformat())
 
     for offset in range(max_days):
         current_date = start_date + timedelta(days=offset)
         day_str = current_date.isoformat()
 
-        logger.info("[%d/%d] %s: fetching showtimes...", offset + 1, max_days, day_str)
+        logger.debug("[%d/%d] %s: fetching showtimes...", offset + 1, max_days, day_str)
         fetch = collect_day(session, day_str, failed_calls)
         dates_scanned.append(day_str)
 
         if fetch.call_succeeded and not fetch.shows:
-            logger.info("%s: no showtimes found — stopping scan", day_str)
+            logger.debug("%s: no showtimes found — stopping scan", day_str)
             stop_reason = "empty_date_hit"
             break
 
         if not fetch.call_succeeded:
             continue
 
-        logger.info("%s: %d showtime(s) found", day_str, len(fetch.shows))
+        logger.debug("%s: %d showtime(s) found", day_str, len(fetch.shows))
         for i, show in enumerate(fetch.shows, start=1):
-            logger.info(
+            logger.debug(
                 "  [%d/%d] fetching seat layout for performanceId=%s (%s %s)",
                 i,
                 len(fetch.shows),
@@ -166,7 +166,7 @@ def run_scan(
             if show_stats is not None:
                 shows.append(show_stats)
 
-    logger.info(
+    logger.debug(
         "Scan complete: %d showtime(s) collected, %d failed call(s)",
         len(shows),
         len(failed_calls),

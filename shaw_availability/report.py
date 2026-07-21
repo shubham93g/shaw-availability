@@ -46,11 +46,12 @@ def build_report(result: ScanResult) -> ReportData:
         ]
         shows_that_day = [s for s in result.shows if s.display_date == day.date]
         for show in sorted(shows_that_day, key=lambda s: (s.venue_name, s.display_time)):
+            unknown_suffix = f"  UNK {show.unknown:3d}" if show.unknown else ""
             lines.append(
                 f"  {show.display_time:>8}  {show.venue_name:<20} {show.movie_title:<25} "
                 f"avail {show.availability_pct:5.1f}%  "
-                f"(AV {show.available:3d} / SO {show.sold:3d} / BL {show.blocked:3d} / "
-                f"OH {show.on_hold:3d} / UNK {show.unknown:3d})  api={show.api_seating_status}"
+                f"(AV {show.available:3d}/{show.total_seats:3d})"
+                f"{unknown_suffix}  api={show.api_seating_status}"
                 + ("  [ANOMALY]" if show.anomaly else "")
             )
         day_sections.append(ReportSection(title=day.date, lines=lines))
