@@ -8,6 +8,8 @@ DEST="$HOME/Library/LaunchAgents/$PLIST_NAME"
 LABEL="$(plutil -extract Label raw "$PLIST_SRC")"
 DOMAIN="gui/$(id -u)"
 TARGET="$DOMAIN/$LABEL"
+LOG_FILE="$(plutil -extract StandardOutPath raw "$PLIST_SRC")"
+LOG_LINES=5
 
 # The wrapper script must live outside TCC-protected folders (Documents,
 # Desktop, Downloads, ...) or launchd fails to exec it with "Operation not
@@ -39,6 +41,14 @@ cmd_status() {
     else
       echo "(not installed — run '$(basename "$0") install')"
     fi
+  fi
+
+  echo
+  if [[ -f "$LOG_FILE" ]]; then
+    echo "Last $LOG_LINES log lines ($LOG_FILE):"
+    tail -n "$LOG_LINES" "$LOG_FILE"
+  else
+    echo "No log file yet at $LOG_FILE"
   fi
 }
 
