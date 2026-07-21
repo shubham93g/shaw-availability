@@ -51,9 +51,6 @@ def parse_show_times(raw_movies: list[dict]) -> list[ShowTime]:
                         location_venue_id=raw_show.get("locationVenueId", -1),
                         location_venue_name=raw_show.get("locationVenueName", ""),
                         seating_status=seating_status,
-                        format_code=raw_show.get("formatCode", ""),
-                        subtitle_code=raw_show.get("subtitleCode", ""),
-                        is_midnight=raw_show.get("isMidnight", False),
                     )
                 )
             except KeyError as exc:
@@ -82,8 +79,6 @@ def parse_seat_elements(raw_elements: list[dict]) -> list[SeatElement]:
                 row=raw.get("rowReference", ""),
                 column=raw.get("columnReference", ""),
                 status_code=status_code,
-                is_house_seat=raw.get("isHouseSeat", False),
-                pricing_tier=raw.get("pricingTier"),
             )
         )
     return elements

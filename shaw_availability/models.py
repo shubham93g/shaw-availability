@@ -8,8 +8,6 @@ class SeatElement:
     row: str
     column: str
     status_code: str
-    is_house_seat: bool
-    pricing_tier: str | None
 
 
 @dataclass
@@ -22,9 +20,6 @@ class ShowTime:
     location_venue_id: int
     location_venue_name: str
     seating_status: str
-    format_code: str
-    subtitle_code: str
-    is_midnight: bool
 
 
 @dataclass
