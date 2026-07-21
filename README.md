@@ -1,5 +1,7 @@
 # Shaw IMAX Seat-Availability Scanner
 
+[![Shaw IMAX Availability Scan](https://github.com/shubham93g/shaw-availability/actions/workflows/scan.yml/badge.svg?branch=main)](https://github.com/shubham93g/shaw-availability/actions/workflows/scan.yml)
+
 Scans Shaw Theatres' internal IMAX booking API to see how full upcoming
 IMAX showtimes are, across all venues, over the next two weeks.
 
