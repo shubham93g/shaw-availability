@@ -11,8 +11,12 @@ IMAX showtimes are, across all venues, over the next two weeks.
 2. For every showtime found, calls `get_layouts` once to pull the full seat
    map for that performance.
 3. Computes seat-availability stats per show, per day, and for the whole
-   scan, and prints a console report.
+   scan, and prints a console report — including the top 5 most- and
+   least-available showtimes across the whole scan.
 4. Persists results to disk so availability can be tracked over time.
+5. Logs progress in real time (which date/showtime it's on) at the default
+   log level, so a long scan doesn't look hung — pass `--verbose` for
+   full HTTP-level debug logging.
 
 ## Usage
 
@@ -56,8 +60,9 @@ Availability % per show = `AV / (AV + SO + BL + OH)`.
 Note: a live example showed `seatingStatus=SO` on a show that still had 21
 `AV` seats — all of them in the four least-desirable front rows. `SO`
 appears to reflect Shaw's own "practically sold out" threshold rather than
-literal zero availability, so this is expected behavior, not flagged as an
-anomaly.
+literal zero availability, so this is expected and not treated as an
+anomaly. The one remaining anomaly check flags the opposite, more clearly
+contradictory case: `seatingStatus=AV` with computed 0% availability.
 
 ## Output
 
