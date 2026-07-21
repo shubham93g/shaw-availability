@@ -2,10 +2,7 @@ name: Shaw IMAX Availability Scan
 
 on:
   schedule:
-    # TEMPORARY: every 10 min, to verify the schedule trigger actually fires.
-    # Revert to the every-2h-during-the-day schedule once confirmed.
     - cron: '*/10 * * * *'
-      timezone: "Asia/Singapore"
   workflow_dispatch: {}
 
 permissions:
