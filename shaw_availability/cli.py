@@ -51,9 +51,6 @@ def main(argv: list[str] | None = None) -> int:
 
     run_dir = persistence.make_run_dir(args.output_dir, datetime.now(config.SGT))
     persistence.save_scan_result_json(result, run_dir)
-    persistence.save_shows_csv(result, run_dir)
-    persistence.save_days_csv(result, run_dir)
-    persistence.append_history_csv(result, args.output_dir)
 
     report_data = report.build_report(result)
     report.print_report(report_data)
