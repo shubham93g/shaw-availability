@@ -3,9 +3,9 @@ name: Shaw IMAX Availability Scan
 on:
   schedule:
     # Cron is always UTC on GitHub Actions.
-    # 0,3,6,9,12,15 UTC = 08,11,14,17,20,23 SGT — every 3h during Singapore waking hours,
-    # skipping the overnight window (23:00-08:00 SGT) when nobody's checking availability.
-    - cron: '0 0,3,6,9,12,15 * * *'
+    # 1,3,5,7,9,11,13,15,23 UTC = 09,11,13,15,17,19,21,23,07 SGT — every 2h from
+    # 07:00 to 23:00 SGT, skipping the overnight window when nobody's checking availability.
+    - cron: '0 1,3,5,7,9,11,13,15,23 * * *'
   workflow_dispatch: {}
 
 permissions:

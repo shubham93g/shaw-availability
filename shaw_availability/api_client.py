@@ -57,7 +57,12 @@ def _request_with_retry(session: requests.Session, url: str, params: dict) -> re
             last_error = exc
             _throttle()
             if attempt < config.MAX_RETRIES:
-                time.sleep(config.RETRY_BACKOFF_SECONDS[attempt])
+                delay = config.REQUEST_DELAY_SECONDS * (2**attempt)
+                logger.warning(
+                    "retrying %s (attempt %d/%d) after %s: sleeping %.2fs",
+                    url, attempt + 1, config.MAX_RETRIES, exc, delay,
+                )
+                time.sleep(delay)
                 continue
             raise ApiError(f"request to {url} failed: {exc}") from exc
 
@@ -66,7 +71,12 @@ def _request_with_retry(session: requests.Session, url: str, params: dict) -> re
         if response.status_code >= 500:
             last_error = ApiError(f"{url} returned {response.status_code}")
             if attempt < config.MAX_RETRIES:
-                time.sleep(config.RETRY_BACKOFF_SECONDS[attempt])
+                delay = config.REQUEST_DELAY_SECONDS * (2**attempt)
+                logger.warning(
+                    "retrying %s (attempt %d/%d) after %s: sleeping %.2fs",
+                    url, attempt + 1, config.MAX_RETRIES, last_error, delay,
+                )
+                time.sleep(delay)
                 continue
             raise last_error
 
