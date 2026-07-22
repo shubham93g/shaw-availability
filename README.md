@@ -103,13 +103,14 @@ Scanning and publishing are split across two workflows:
   publishing, it dispatches `deploy.yml` itself (`gh workflow run
   deploy.yml`), unless run with its `deploy` input set to `false`.
 - **`.github/workflows/deploy.yml`** takes whatever is currently in the
-  `latest` release and publishes it to GitHub Pages
-  (`actions/upload-pages-artifact` + `actions/deploy-pages`) and Cloudflare
-  Pages. It only reacts to `workflow_dispatch` — either the one scan.yml
-  fires automatically after a successful scan, or a manual run to retry a
-  failed deploy. It always re-fetches whatever is currently in the `latest`
-  release, so a retry needs no extra bookkeeping about which run it came
-  from.
+  `latest` release and publishes it to Cloudflare Pages. It only reacts to
+  `workflow_dispatch` — either the one scan.yml fires automatically after a
+  successful scan, or a manual run to retry a failed deploy. It always
+  re-fetches whatever is currently in the `latest` release, so a retry
+  needs no extra bookkeeping about which run it came from.
+- **`.github/workflows/pages-redirect.yml`** is not part of this cadence at
+  all. It publishes a static redirect page to GitHub Pages and is only run
+  manually, once — see [Hosting](#hosting) below.
 
 This is the third scheduling mechanism this project has used. The first two
 were a locally-run trigger (first a Python loop, later a macOS `launchd`
@@ -126,11 +127,20 @@ awake" property of GitHub's cron without those drift/suspension issues. See
 
 ## Hosting
 
-Each deploy run publishes the same `index.html` to two destinations:
-GitHub Pages (`<owner>.github.io/...`) and Cloudflare Pages
-(`<project-name>.pages.dev` — a name chosen at project creation, not tied
-to any account identity, unlike the GitHub Pages URL). The two publishes
-are independent: a failure in one never blocks the other.
+Cloudflare Pages (`<CLOUDFLARE_PROJECT_NAME>.pages.dev` — a name chosen at
+project creation, not tied to any account identity) is the live report,
+updated by `deploy.yml` on every scan. GitHub Pages
+(`<owner>.github.io/shaw-availability/`) is a static redirect to that URL:
+`pages-redirect.yml` publishes a small page there once
+(meta-refresh + JS `location.replace`, preserving any query string) and
+isn't re-run on the recurring schedule — only if the Cloudflare project
+itself ever changes.
+
+The project name is a single GitHub Actions repo **variable**,
+`CLOUDFLARE_PROJECT_NAME`, referenced by both `deploy.yml` (the
+`wrangler pages deploy` command) and `pages-redirect.yml` (to build the
+redirect target URL) — so renaming the Cloudflare project only means
+updating it in one place.
 
 One-time setup for the Cloudflare Pages side:
 1. Create the Pages project: `wrangler pages project create
@@ -139,3 +149,8 @@ One-time setup for the Cloudflare Pages side:
    https://dash.cloudflare.com/profile/api-tokens
 3. Add it, plus the Cloudflare account ID, as GitHub Actions repo secrets:
    `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+4. Add the project name as a GitHub Actions repo variable (Settings →
+   Secrets and variables → Actions → Variables), or via `gh`:
+   ```bash
+   gh variable set CLOUDFLARE_PROJECT_NAME --body "shaw-availability"
+   ```

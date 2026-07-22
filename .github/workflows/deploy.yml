@@ -5,8 +5,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -15,9 +13,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download latest scan output
         id: download
@@ -27,20 +22,9 @@ jobs:
           mkdir -p site
           gh release download latest --repo "$GITHUB_REPOSITORY" --pattern "index.html" --dir site --clobber
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-      - id: deployment
-        uses: actions/deploy-pages@v4
-
-      # Independent of the GitHub Pages steps above: a Pages failure shouldn't
-      # skip this. Still gated on the download succeeding, and !cancelled()
-      # keeps a manual cancellation from forcing this step to run anyway.
       - name: Deploy to Cloudflare Pages
-        if: ${{ !cancelled() && steps.download.outcome == 'success' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy site --project-name=shaw-availability
+          command: pages deploy site --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }}
