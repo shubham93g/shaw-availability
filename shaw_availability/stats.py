@@ -7,10 +7,10 @@ from .models import DayAggregate, SeatElement, ShowStats, ShowTime
 
 
 def compute_show_stats(show: ShowTime, elements: list[SeatElement]) -> ShowStats:
-    available = sum(1 for e in elements if e.status_code == "AV")
-    sold = sum(1 for e in elements if e.status_code == "SO")
-    blocked = sum(1 for e in elements if e.status_code == "BL")
-    on_hold = sum(1 for e in elements if e.status_code == "OH")
+    available = sum(1 for e in elements if e.status_code == config.SEAT_STATUS_AVAILABLE)
+    sold = sum(1 for e in elements if e.status_code == config.SEAT_STATUS_SOLD)
+    blocked = sum(1 for e in elements if e.status_code == config.SEAT_STATUS_BLOCKED)
+    on_hold = sum(1 for e in elements if e.status_code == config.SEAT_STATUS_ON_HOLD)
     unknown_codes = Counter(
         e.status_code for e in elements if e.status_code not in config.KNOWN_SEAT_STATUSES
     )
@@ -20,8 +20,6 @@ def compute_show_stats(show: ShowTime, elements: list[SeatElement]) -> ShowStats
     availability_pct = (available / denom * 100) if denom else 0.0
 
     best_seats_available = seat_geometry.best_available_seat_ranges(elements)
-
-    anomaly = _detect_anomaly(show.seating_status, available, availability_pct)
 
     return ShowStats(
         performance_id=show.performance_id,
@@ -39,7 +37,6 @@ def compute_show_stats(show: ShowTime, elements: list[SeatElement]) -> ShowStats
         unknown_codes=dict(unknown_codes),
         availability_pct=availability_pct,
         best_seats_available=best_seats_available,
-        anomaly=anomaly,
     )
 
 
@@ -74,18 +71,8 @@ def aggregate_day(date: str, shows: list[ShowStats]) -> DayAggregate:
 
 def summarize_scan(shows: list[ShowStats]) -> dict:
     ascending = sorted(shows, key=lambda s: s.availability_pct)
+    n = config.HIGHLIGHT_SHOW_COUNT
     return {
-        "most_available_shows": list(reversed(ascending[-5:])),
-        "least_available_shows": ascending[:5],
-        "anomalies": [s for s in shows if s.anomaly],
+        "most_available_shows": list(reversed(ascending[-n:])),
+        "least_available_shows": ascending[:n],
     }
-
-
-def _detect_anomaly(api_status: str, available: int, availability_pct: float) -> str | None:
-    # Note: seatingStatus=SO + nonzero AV seats is NOT flagged here — that's
-    # expected. SO appears to mean "practically sold out" (a venue-side
-    # threshold), not "zero seats remain": a live sample showed SO with 21
-    # AV seats, all confined to the least desirable front rows.
-    if api_status == "AV" and availability_pct == 0:
-        return "api seatingStatus=AV but computed availability is 0%"
-    return None

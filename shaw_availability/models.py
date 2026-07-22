@@ -41,7 +41,6 @@ class ShowStats:
     unknown_codes: dict[str, int]
     availability_pct: float
     best_seats_available: list[str]
-    anomaly: str | None
 
 
 @dataclass

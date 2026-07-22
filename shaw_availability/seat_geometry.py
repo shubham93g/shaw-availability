@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from itertools import groupby
 
+from . import config
 from .models import SeatElement
 
 BACK_FRACTION = 1 / 3
@@ -45,7 +46,9 @@ def best_available_seat_ranges(elements: list[SeatElement]) -> list[str]:
     range. Non-numeric columns (companion/handicap seats like "H12") and
     isolated seats are listed individually.
     """
-    available = [e for e in classify_best_seats(elements) if e.status_code == "AV"]
+    available = [
+        e for e in classify_best_seats(elements) if e.status_code == config.SEAT_STATUS_AVAILABLE
+    ]
     available.sort(key=_seat_sort_key)
 
     labels: list[str] = []

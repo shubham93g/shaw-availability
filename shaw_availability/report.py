@@ -31,7 +31,6 @@ class ReportData:
     day_sections: list[ReportSection] = field(default_factory=list)
     most_available_shows: list[ShowStats] = field(default_factory=list)
     least_available_shows: list[ShowStats] = field(default_factory=list)
-    anomalies: list[ShowStats] = field(default_factory=list)
     failed_calls: list[FailedCall] = field(default_factory=list)
 
 
@@ -63,7 +62,7 @@ def build_report(result: ScanResult) -> ReportData:
             key=lambda s: (s.venue_name, _time_sort_key(s.display_time)),
         ):
             unknown_suffix = f"  UNK {show.unknown:3d}" if show.unknown else ""
-            status_label = config.SEATING_STATUS_LABELS.get(
+            status_label = config.SHOW_STATUS_LABELS.get(
                 show.api_seating_status, show.api_seating_status
             )
             best_seats_str = (
@@ -72,13 +71,12 @@ def build_report(result: ScanResult) -> ReportData:
                 else "-"
             )
             lines.append(
-                f"  {show.display_time:>8}  {show.venue_name:<{venue_width}} "
-                f"{show.movie_title:<{movie_width}}  "
+                f"  {show.movie_title:<{movie_width}} "
+                f"{show.display_time:>8}  {show.venue_name:<{venue_width}}  "
                 f"{show.availability_pct:5.1f}%  "
                 f"(AV {show.available:3d}/{show.total_seats:3d})  "
                 f"{status_label:<13}"
                 f"{unknown_suffix}"
-                + ("  [ANOMALY]" if show.anomaly else "")
                 + f"  Best Seats: {best_seats_str}"
             )
         day_sections.append(ReportSection(title=_with_weekday(day.date), lines=lines))
@@ -91,7 +89,6 @@ def build_report(result: ScanResult) -> ReportData:
         day_sections=day_sections,
         most_available_shows=summary["most_available_shows"],
         least_available_shows=summary["least_available_shows"],
-        anomalies=summary["anomalies"],
         failed_calls=result.failed_calls,
     )
 
@@ -111,27 +108,18 @@ def render_report_text(report: ReportData) -> str:
         lines.append("")
 
     lines.append("-- Highlights --")
-    lines.append("Top 5 most available:")
+    lines.append(f"Top {len(report.most_available_shows)} most available:")
     for s in report.most_available_shows:
         lines.append(
             f"  {s.availability_pct:5.1f}%  {s.movie_title} @ {s.venue_name} "
             f"{_with_weekday(s.display_date)} {s.display_time}"
         )
-    lines.append("Top 5 least available:")
+    lines.append(f"Top {len(report.least_available_shows)} least available:")
     for s in report.least_available_shows:
         lines.append(
             f"  {s.availability_pct:5.1f}%  {s.movie_title} @ {s.venue_name} "
             f"{_with_weekday(s.display_date)} {s.display_time}"
         )
-
-    if report.anomalies:
-        lines.append("")
-        lines.append("-- Anomalies --")
-        for s in report.anomalies:
-            lines.append(
-                f"  {s.movie_title} @ {s.venue_name} {_with_weekday(s.display_date)} "
-                f"{s.display_time}: {s.anomaly}"
-            )
 
     if report.failed_calls:
         lines.append("")

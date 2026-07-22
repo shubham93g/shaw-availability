@@ -64,18 +64,12 @@ Availability % per show = `AV / (AV + SO + BL + OH)`.
 Note: a live example showed `seatingStatus=SO` on a show that still had 21
 `AV` seats — all of them in the four least-desirable front rows. `SO`
 appears to reflect Shaw's own "practically sold out" threshold rather than
-literal zero availability, so this is expected and not treated as an
-anomaly. The one remaining anomaly check flags the opposite, more clearly
-contradictory case: `seatingStatus=AV` with computed 0% availability.
+literal zero availability.
 
 ## Output
 
-Each run writes to `output/<UTC-timestamp>/`:
-- `scan_result.json` — the full scan result
-- `shows.csv` / `days.csv` — per-show and per-day stats for that run
-
-...and appends every show's stats (with a `scanned_at` timestamp) to
-`output/history_shows.csv`, so availability can be compared across runs.
+Each run writes `scan_result.json` (the full scan result) to
+`output/<SGT-timestamp>/`.
 
 ## Project layout
 
@@ -87,8 +81,8 @@ shaw_availability/
 │   ├── api_client.py         # HTTP layer (requests.Session, retries, throttling)
 │   ├── models.py             # dataclasses for showtimes, seats, stats, results
 │   ├── collector.py          # orchestrates the date/showtime/layout scan
-│   ├── stats.py              # pure stat computation, anomaly detection
-│   ├── persistence.py        # JSON/CSV output writers
+│   ├── stats.py              # pure stat computation
+│   ├── persistence.py        # JSON output writer
 │   ├── report.py             # builds and prints the console report
 │   └── cli.py                # argument parsing and wiring
 └── output/                   # created at runtime, gitignored
