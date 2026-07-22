@@ -70,12 +70,10 @@ class ClassifyBestSeatsTest(unittest.TestCase):
         self.assertEqual(classify_best_seats([]), [])
 
     def test_best_available_seat_ranges_matches_fixture_snapshot(self):
-        # Only 2 of the 42 best seats are AV at capture time; row/column are
-        # joined with "-" since companion-seat columns like "H12" would
-        # otherwise read ambiguously when concatenated straight onto a row
-        # letter (e.g. "AH12"). Neither is numeric, so no compression applies
-        # here — see CompressRowTest for that.
-        self.assertEqual(best_available_seat_ranges(self.elements), ["A-H12", "A-H13"])
+        # Only 2 of the 42 best seats are AV at capture time. Neither column
+        # is numeric, so no compression applies here — see CompressRowTest
+        # for that.
+        self.assertEqual(best_available_seat_ranges(self.elements), ["AH12", "AH13"])
 
 
 def _seat(row: str, column: str, status: str = "AV") -> SeatElement:
@@ -89,18 +87,18 @@ class CompressRowTest(unittest.TestCase):
 
     def test_compresses_a_consecutive_run(self):
         seats = [_seat("B", "5"), _seat("B", "6"), _seat("B", "7")]
-        self.assertEqual(_compress_row("B", seats), ["B-5:7"])
+        self.assertEqual(_compress_row("B", seats), ["B5-7"])
 
     def test_leaves_an_isolated_seat_uncompressed(self):
-        self.assertEqual(_compress_row("B", [_seat("B", "9")]), ["B-9"])
+        self.assertEqual(_compress_row("B", [_seat("B", "9")]), ["B9"])
 
     def test_splits_non_consecutive_runs(self):
         seats = [_seat("B", "5"), _seat("B", "6"), _seat("B", "7"), _seat("B", "9")]
-        self.assertEqual(_compress_row("B", seats), ["B-5:7", "B-9"])
+        self.assertEqual(_compress_row("B", seats), ["B5-7", "B9"])
 
     def test_non_numeric_columns_are_never_compressed(self):
         seats = [_seat("A", "H12"), _seat("A", "H13")]
-        self.assertEqual(_compress_row("A", seats), ["A-H12", "A-H13"])
+        self.assertEqual(_compress_row("A", seats), ["AH12", "AH13"])
 
 
 if __name__ == "__main__":

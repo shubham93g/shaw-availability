@@ -40,9 +40,9 @@ def classify_best_seats(elements: list[SeatElement]) -> list[SeatElement]:
 
 
 def best_available_seat_ranges(elements: list[SeatElement]) -> list[str]:
-    """Available best seats as row-grouped labels, e.g. ["B-5:7", "B-9", "A-H12"].
+    """Available best seats as row-grouped labels, e.g. ["B5-7", "B9", "AH12"].
 
-    Consecutive numeric columns within a row collapse into a "start:end"
+    Consecutive numeric columns within a row collapse into a "start-end"
     range. Non-numeric columns (companion/handicap seats like "H12") and
     isolated seats are listed individually.
     """
@@ -63,7 +63,7 @@ def _compress_row(row: str, seats: list[SeatElement]) -> list[str]:
     while i < len(seats):
         column = seats[i].column
         if not column.isdigit():
-            labels.append(f"{row}-{column}")
+            labels.append(f"{row}{column}")
             i += 1
             continue
 
@@ -77,7 +77,7 @@ def _compress_row(row: str, seats: list[SeatElement]) -> list[str]:
             j += 1
         run_end = int(seats[j].column)
 
-        labels.append(f"{row}-{run_start}:{run_end}" if j > i else f"{row}-{run_start}")
+        labels.append(f"{row}{run_start}-{run_end}" if j > i else f"{row}{run_start}")
         i = j + 1
     return labels
 
