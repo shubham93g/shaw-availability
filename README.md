@@ -126,9 +126,3 @@ One-time setup for the Cloudflare Pages side:
    https://dash.cloudflare.com/profile/api-tokens
 3. Add it, plus the Cloudflare account ID, as GitHub Actions repo secrets:
    `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-
-## Not yet built
-
-Telegram delivery of results. `report.py` already splits report-building
-(`build_report` → structured `ReportData`) from rendering/printing, so a
-notifier can be added later without touching collection or stats logic.
