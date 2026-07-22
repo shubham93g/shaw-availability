@@ -28,7 +28,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     scan_parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
 
     report_parser = subparsers.add_parser(
-        "report", help="Generate report.txt/index.html from an existing scan_result.json."
+        "report", help="Generate index.html from an existing scan_result.json."
     )
     report_parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
 
@@ -59,8 +59,7 @@ def _run_report(args: argparse.Namespace) -> None:
     report_text = report.render_report_text(report_data)
     print(report_text)
 
-    persistence.save_report_txt(report_text)
-    persistence.save_report_html(report.render_report_html(report_data.generated_at, report_text))
+    persistence.save_report_html(report.render_report_html(report_data))
 
 
 def main(argv: list[str] | None = None) -> int:

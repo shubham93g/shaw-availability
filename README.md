@@ -69,9 +69,9 @@ literal zero availability.
 
 ## Output
 
-Each run writes `scan_result.json`, `report.txt`, and `index.html` (rendered
-from a Jinja2 template) to `artifacts/` (gitignored), overwriting the
-previous run's output.
+Each run writes `scan_result.json` and `index.html` (rendered from a Jinja2
+template) to `artifacts/` (gitignored), overwriting the previous run's
+output.
 
 ## Project layout
 
@@ -84,7 +84,7 @@ shaw_availability/
 │   ├── models.py             # dataclasses for showtimes, seats, stats, results
 │   ├── collector.py          # orchestrates the date/showtime/layout scan
 │   ├── stats.py              # pure stat computation
-│   ├── persistence.py        # writes report.txt/index.html/scan_result.json
+│   ├── persistence.py        # writes index.html/scan_result.json
 │   ├── report.py             # builds the report and renders text/HTML output
 │   ├── templates/            # Jinja2 templates for index.html
 │   └── cli.py                # argument parsing and wiring
@@ -94,10 +94,10 @@ shaw_availability/
 
 Scanning and publishing are split across two workflows:
 
-- **`.github/workflows/scan.yml`** runs the scan, which writes `report.txt`,
-  `index.html`, and `scan_result.json` to a local `artifacts/` folder, and
-  publishes all three as assets on a single reused GitHub Release tagged
-  `latest` (overwritten every run — it's a snapshot, not a versioned
+- **`.github/workflows/scan.yml`** runs the scan, which writes `index.html`
+  and `scan_result.json` to a local `artifacts/` folder, and publishes both
+  as assets on a single reused GitHub Release tagged `latest` (overwritten
+  every run — it's a snapshot, not a versioned
   release). It only reacts to `workflow_dispatch` — it no longer
   self-schedules. Runs are triggered externally, every 30 minutes from
   7:00am to 11:00pm SGT, by a Cloudflare Worker on a Cron Trigger

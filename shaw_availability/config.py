@@ -47,5 +47,6 @@ SHOW_STATUS_LABELS = {
 
 ARTIFACTS_DIR = Path("artifacts")
 SCAN_RESULT_FILENAME = "scan_result.json"
-REPORT_TXT_FILENAME = "report.txt"
 REPORT_HTML_FILENAME = "index.html"
+
+BOOKING_URL_TEMPLATE = "https://shaw.sg/showtimes/{performance_id}"

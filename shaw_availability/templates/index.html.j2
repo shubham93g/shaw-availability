@@ -3,11 +3,108 @@
 <head>
   <meta charset="utf-8">
   <title>Shaw IMAX Availability</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; }
+    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
+    th { background: #f4f4f4; }
+    tbody tr:hover { background: #f9fafb; }
+    td.cell-time { text-align: right; font-variant-numeric: tabular-nums; }
+    td.cell-book { text-align: center; padding: 0.3rem; }
+    td.cell-book a {
+      display: inline-block;
+      padding: 0.3rem 0.9rem;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+    td.cell-book a:hover { background: #1d4ed8; }
+    h2 { margin-top: 2rem; }
+  </style>
 </head>
 <body>
+  {% macro cell(content, css_class="") %}<td{% if css_class %} class="{{ css_class }}"{% endif %}>{{ content }}</td>{% endmacro %}
+
+  {% macro book_cell(url) %}<td class="cell-book"><a href="{{ url }}" target="_blank" rel="noopener noreferrer">Book</a></td>{% endmacro %}
+
+  {% macro show_table_head(show_date=True) %}
+  <thead>
+    <tr>
+      {% if show_date %}<th>Date</th>{% endif %}<th>Movie</th><th>Venue</th><th>Time</th><th>Availability</th>
+      <th>Seats</th><th>Status</th><th>Best Seats</th><th>Book</th>
+    </tr>
+  </thead>
+  {% endmacro %}
+
+  {% macro show_row(show, show_date=True) %}
+  <tr>
+    {% if show_date %}{{ cell(short_date(show.display_date)) }}{% endif %}
+    {{ cell(show.movie_title) }}
+    {{ cell(show.venue_name) }}
+    {{ cell(show.display_time, "cell-time") }}
+    {{ cell("%.1f%%"|format(show.availability_pct)) }}
+    {{ cell(show.available ~ "/" ~ show.total_seats) }}
+    {{ cell(status_label(show.api_seating_status)) }}
+    {{ cell(show.best_seats_available|join(", ") if show.best_seats_available else "-") }}
+    {{ book_cell(booking_url(show.performance_id)) }}
+  </tr>
+  {% endmacro %}
+
   <h1>Shaw IMAX Availability Report</h1>
   <p>Generated: {{ generated_at_display }}</p>
   <p>Updated every 30 minutes, 7:00am&ndash;11:00pm SGT.</p>
-  <pre>{{ report_text }}</pre>
+
+  <p>
+    Scan window:
+    {{ report.dates_scanned[0] if report.dates_scanned else "n/a" }}
+    to
+    {{ report.dates_scanned[-1] if report.dates_scanned else "n/a" }}
+    ({{ report.dates_scanned|length }} day(s) scanned, stopped: {{ report.stop_reason }})<br>
+    Total showtimes collected: {{ report.total_shows }}<br>
+    Failed API calls: {{ report.failed_calls|length }}
+  </p>
+
+  {% if report.day_sections %}
+    {% for section in report.day_sections %}
+      <h2>{{ short_date(section.date) }}</h2>
+      <p>{{ section.show_count }} show(s), avg availability {{ "%.1f"|format(section.avg_availability_pct) }}%</p>
+      <table>
+        {{ show_table_head(show_date=False) }}
+        <tbody>
+          {% for show in section.shows %}{{ show_row(show, show_date=False) }}{% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+  {% else %}
+    <p>No shows scanned.</p>
+  {% endif %}
+
+  <h2>Highlights</h2>
+  <h3>Top {{ report.most_available_shows|length }} most available</h3>
+  {% if report.most_available_shows %}
+  <table>
+    {{ show_table_head() }}
+    <tbody>{% for show in report.most_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
+  </table>
+  {% else %}<p>n/a</p>{% endif %}
+
+  <h3>Top {{ report.least_available_shows|length }} least available</h3>
+  {% if report.least_available_shows %}
+  <table>
+    {{ show_table_head() }}
+    <tbody>{% for show in report.least_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
+  </table>
+  {% else %}<p>n/a</p>{% endif %}
+
+  {% if report.failed_calls %}
+  <h2>Failed calls ({{ report.failed_calls|length }})</h2>
+  <ul>
+    {% for f in report.failed_calls %}
+    <li>[{{ f.kind }}] {{ f.identifier }}: {{ f.error }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </body>
 </html>

@@ -36,14 +36,13 @@ jobs:
         run: python main.py scan
 
       - name: Generate report
-        run: python main.py report
-
-      - name: Build report summary
         run: |
+          REPORT_TEXT="$(python main.py report)"
+          echo "$REPORT_TEXT"
           {
             echo "### Shaw IMAX Availability Report — $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')"
             echo '```'
-            cat artifacts/report.txt
+            echo "$REPORT_TEXT"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

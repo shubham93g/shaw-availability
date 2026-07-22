@@ -34,12 +34,6 @@ def load_scan_result_json() -> ScanResult:
     )
 
 
-def save_report_txt(text: str) -> Path:
-    path = _artifact_path(config.REPORT_TXT_FILENAME)
-    path.write_text(text)
-    return path
-
-
 def save_report_html(html: str) -> Path:
     path = _artifact_path(config.REPORT_HTML_FILENAME)
     path.write_text(html)

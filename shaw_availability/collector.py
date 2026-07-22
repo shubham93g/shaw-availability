@@ -177,9 +177,14 @@ def run_scan(
         len(failed_calls),
     )
 
+    # A show fetched for a scanned date can carry a displayDate one day later
+    # (a post-midnight showing, e.g. 12:10 AM, catalogued under the next
+    # calendar day by the API) — union in those dates so every collected
+    # show lands in exactly one day aggregate, not just the fetched dates.
+    all_dates = sorted(set(dates_scanned) | {s.display_date for s in shows})
     day_aggregates = [
         stats.aggregate_day(d, [s for s in shows if s.display_date == d])
-        for d in dates_scanned
+        for d in all_dates
     ]
 
     return ScanResult(

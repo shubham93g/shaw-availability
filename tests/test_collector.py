@@ -59,6 +59,39 @@ class RunScanEarlyStopTest(unittest.TestCase):
 
     @patch("shaw_availability.collector.api_client.get_layouts")
     @patch("shaw_availability.collector.api_client.get_show_times")
+    def test_show_with_next_day_display_date_gets_its_own_day_aggregate(
+        self, mock_get_show_times, mock_get_layouts
+    ):
+        # A post-midnight showing fetched under today's date can come back
+        # tagged with tomorrow's displayDate — it must still land in a day
+        # aggregate (not just result.shows) or it silently disappears from
+        # every by-day breakdown while still counting toward the total.
+        today = date(2026, 7, 23)
+        tomorrow = today + timedelta(days=1)
+
+        def fake_get_show_times(session, day_str):
+            if day_str == today.isoformat():
+                return _raw_movies(1, today.isoformat()) + _raw_movies(
+                    2, tomorrow.isoformat()
+                )
+            return []  # tomorrow: genuine edge of schedule
+
+        mock_get_show_times.side_effect = fake_get_show_times
+        mock_get_layouts.return_value = []
+
+        result = collector.run_scan(session=MagicMock(), start_date=today, max_days=14)
+
+        self.assertEqual(result.dates_scanned, [today.isoformat(), tomorrow.isoformat()])
+        self.assertEqual(len(result.shows), 2)
+
+        aggregate_dates = [d.date for d in result.day_aggregates]
+        self.assertEqual(aggregate_dates, [today.isoformat(), tomorrow.isoformat()])
+        self.assertEqual(
+            sum(d.show_count for d in result.day_aggregates), len(result.shows)
+        )
+
+    @patch("shaw_availability.collector.api_client.get_layouts")
+    @patch("shaw_availability.collector.api_client.get_show_times")
     def test_empty_today_alone_does_not_short_circuit_single_day_scan(
         self, mock_get_show_times, mock_get_layouts
     ):
