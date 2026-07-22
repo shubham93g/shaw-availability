@@ -46,6 +46,7 @@ jobs:
             echo "<title>Shaw IMAX Availability</title></head><body>"
             echo "<h1>Shaw IMAX Availability Report</h1>"
             echo "<p>Generated: $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')</p>"
+            echo "<p>Updated every 30 minutes, 7:00am&ndash;11:00pm SGT.</p>"
             echo "<pre>"
             sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' report.txt
             echo "</pre></body></html>"
