@@ -61,7 +61,7 @@ def build_report(result: ScanResult) -> ReportData:
             shows_that_day,
             key=lambda s: (s.venue_name, _time_sort_key(s.display_time)),
         ):
-            unknown_suffix = f"  UNK {show.unknown:3d}" if show.unknown else ""
+            unknown_suffix = f"UNK {show.unknown:3d}  " if show.unknown else "  "
             status_label = config.SHOW_STATUS_LABELS.get(
                 show.api_seating_status, show.api_seating_status
             )
@@ -74,10 +74,10 @@ def build_report(result: ScanResult) -> ReportData:
                 f"  {show.movie_title:<{movie_width}} "
                 f"{show.venue_name:<{venue_width}}  {show.display_time:>8}  "
                 f"{show.availability_pct:5.1f}%  "
-                f"(AV {show.available:3d}/{show.total_seats:3d})  "
-                f"{status_label:<13}"
+                f"({show.available:3d}/{show.total_seats:3d})  "
+                f"{status_label:<12}  "
                 f"{unknown_suffix}"
-                + f"  Best Seats: {best_seats_str}"
+                + f"Best Seats: {best_seats_str}"
             )
         day_sections.append(ReportSection(title=_with_weekday(day.date), lines=lines))
 
