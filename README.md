@@ -16,21 +16,26 @@ IMAX showtimes are, across all venues, over the next two weeks.
 2. For every showtime found, calls `get_layouts` once to pull the full seat
    map for that performance.
 3. Computes seat-availability stats per show, per day, and for the whole
-   scan, and prints a console report — including the top 10 most-available
-   showtimes across the whole scan.
+   scan — including the top 10 most-available showtimes across the whole
+   scan.
 4. Persists results to disk so availability can be tracked over time.
 5. Logs progress in real time (which date/showtime it's on) at the default
    log level, so a long scan doesn't look hung — pass `--verbose` for
    full HTTP-level debug logging.
 
+Steps 1–2 and 4 run under the `scan` subcommand; step 3's console report
+and `index.html` are built separately by the `report` subcommand from
+whatever `scan` last saved — see Usage below.
+
 ## Usage
 
 ```bash
 pip install -r requirements.txt
-python main.py                    # default: 14 days starting today
-python main.py --days 3           # scan a shorter window
-python main.py --start-date 2026-08-01
-python main.py --verbose
+python main.py scan                        # default: 14 days starting today
+python main.py scan --days 3               # scan a shorter window
+python main.py scan --start-date 2026-08-01
+python main.py scan --verbose
+python main.py report                      # build the report from scan_result.json
 ```
 
 ## APIs used
@@ -69,9 +74,9 @@ literal zero availability.
 
 ## Output
 
-Each run writes `scan_result.json` and `index.html` (rendered from a Jinja2
-template) to `artifacts/` (gitignored), overwriting the previous run's
-output.
+`scan` writes `scan_result.json`; `report` reads it and writes `index.html`
+(rendered from a Jinja2 template). Both land in `artifacts/` (gitignored),
+overwriting the previous run's output.
 
 ## Project layout
 
@@ -84,6 +89,7 @@ shaw_availability/
 │   ├── models.py             # dataclasses for showtimes, seats, stats, results
 │   ├── collector.py          # orchestrates the date/showtime/layout scan
 │   ├── stats.py              # pure stat computation
+│   ├── seat_geometry.py      # classifies/compresses best-available seat ranges
 │   ├── persistence.py        # writes index.html/scan_result.json
 │   ├── report.py             # builds the report and renders text/HTML output
 │   ├── templates/            # Jinja2 templates for index.html
@@ -94,10 +100,10 @@ shaw_availability/
 
 Scanning and publishing are split across two workflows:
 
-- **`.github/workflows/scan.yml`** runs the scan, which writes `index.html`
-  and `scan_result.json` to a local `artifacts/` folder, and publishes both
-  as assets on a single reused GitHub Release tagged `latest` (overwritten
-  every run — it's a snapshot, not a versioned
+- **`.github/workflows/scan.yml`** runs `scan` then `report`, writing
+  `scan_result.json` and `index.html` to a local `artifacts/` folder, and
+  publishes both as assets on a single reused GitHub Release tagged
+  `latest` (overwritten every run — it's a snapshot, not a versioned
   release). It only reacts to `workflow_dispatch` — it no longer
   self-schedules. Runs are triggered externally, every 30 minutes from
   7:00am to 11:00pm SGT, by a Cloudflare Worker on a Cron Trigger
