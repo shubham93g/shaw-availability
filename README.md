@@ -69,8 +69,9 @@ literal zero availability.
 
 ## Output
 
-Each run writes `scan_result.json` (the full scan result) to the repo root,
-overwriting the previous run's output.
+Each run writes `scan_result.json` (the full scan result) to `artifacts/`
+(gitignored), overwriting the previous run's output. The scan workflow also
+writes `report.txt` and `index.html` there — see [Scheduling](#scheduling).
 
 ## Project layout
 
@@ -93,9 +94,10 @@ shaw_availability/
 Scanning and publishing are split across two workflows:
 
 - **`.github/workflows/scan.yml`** runs the scan, builds `report.txt` and
-  `site/index.html`, and publishes both as assets on a single reused GitHub
-  Release tagged `latest` (overwritten every run — it's a snapshot, not a
-  versioned release). It only reacts to `workflow_dispatch` — it no longer
+  `index.html` alongside `scan_result.json` in a local `artifacts/` folder,
+  and publishes all three as assets on a single reused GitHub Release tagged
+  `latest` (overwritten every run — it's a snapshot, not a versioned
+  release). It only reacts to `workflow_dispatch` — it no longer
   self-schedules. Runs are triggered externally, every 30 minutes from
   7:00am to 11:00pm SGT, by a Cloudflare Worker on a Cron Trigger
   (`cron-trigger/`) that calls GitHub's `workflow_dispatch` API. After

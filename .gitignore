@@ -1,6 +1,4 @@
-report.txt
-scan_result.json
-site/
+artifacts/
 __pycache__/
 *.pyc
 .venv/

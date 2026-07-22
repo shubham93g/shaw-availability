@@ -35,18 +35,18 @@ jobs:
       - name: Run scan
         run: |
           set -o pipefail
-          python main.py 2>&1 | tee report.txt
+          mkdir -p artifacts
+          python main.py 2>&1 | tee artifacts/report.txt
 
       - name: Build report summary and static page
         run: |
           {
             echo "### Shaw IMAX Availability Report — $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')"
             echo '```'
-            cat report.txt
+            cat artifacts/report.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          mkdir -p site
           {
             echo "<!doctype html><html><head><meta charset='utf-8'>"
             echo "<title>Shaw IMAX Availability</title></head><body>"
@@ -54,18 +54,18 @@ jobs:
             echo "<p>Generated: $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')</p>"
             echo "<p>Updated every 30 minutes, 7:00am&ndash;11:00pm SGT.</p>"
             echo "<pre>"
-            sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' report.txt
+            sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' artifacts/report.txt
             echo "</pre></body></html>"
-          } > site/index.html
+          } > artifacts/index.html
 
       - name: Publish scan output to the "latest" release
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload latest site/index.html report.txt scan_result.json --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload latest artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create latest site/index.html report.txt scan_result.json \
+            gh release create latest artifacts/* \
               --repo "$GITHUB_REPOSITORY" \
               --title "Latest scan" \
               --notes "Automated scan output, overwritten every run. Not a software release."
