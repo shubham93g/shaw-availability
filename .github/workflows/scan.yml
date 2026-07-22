@@ -33,12 +33,9 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Run scan
-        run: |
-          set -o pipefail
-          mkdir -p artifacts
-          python main.py 2>&1 | tee artifacts/report.txt
+        run: python main.py
 
-      - name: Build report summary and static page
+      - name: Build report summary
         run: |
           {
             echo "### Shaw IMAX Availability Report — $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')"
@@ -46,17 +43,6 @@ jobs:
             cat artifacts/report.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-
-          {
-            echo "<!doctype html><html><head><meta charset='utf-8'>"
-            echo "<title>Shaw IMAX Availability</title></head><body>"
-            echo "<h1>Shaw IMAX Availability Report</h1>"
-            echo "<p>Generated: $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')</p>"
-            echo "<p>Updated every 30 minutes, 7:00am&ndash;11:00pm SGT.</p>"
-            echo "<pre>"
-            sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' artifacts/report.txt
-            echo "</pre></body></html>"
-          } > artifacts/index.html
 
       - name: Publish scan output to the "latest" release
         env:

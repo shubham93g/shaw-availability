@@ -45,7 +45,11 @@ def main(argv: list[str] | None = None) -> int:
     persistence.save_scan_result_json(result)
 
     report_data = report.build_report(result)
-    report.print_report(report_data)
+    report_text = report.render_report_text(report_data)
+    print(report_text)
+
+    persistence.save_report_txt(report_text)
+    persistence.save_report_html(report.render_report_html(report_data.generated_at, report_text))
 
     if result.failed_calls:
         counts = Counter(f.kind for f in result.failed_calls)

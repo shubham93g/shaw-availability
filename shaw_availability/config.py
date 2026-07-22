@@ -1,7 +1,7 @@
 from datetime import timedelta, timezone
 from pathlib import Path
 
-SGT = timezone(timedelta(hours=8))
+SGT = timezone(timedelta(hours=8), "SGT")
 
 BASE_URL = "https://shaw.sg/internal"
 SHOW_TIMES_PATH = "/get_show_times"

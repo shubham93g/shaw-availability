@@ -2,9 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, time
+from pathlib import Path
+
+import jinja2
 
 from . import config, stats
 from .models import FailedCall, ScanResult, ShowStats
+
+_TEMPLATES_DIR = Path(__file__).parent / "templates"
+_jinja_env = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(_TEMPLATES_DIR),
+    autoescape=True,  # explicit, rather than relying on select_autoescape's
+                      # filename-extension sniffing (which wouldn't match "*.j2")
+)
 
 
 def _with_weekday(date_str: str) -> str:
@@ -131,5 +141,13 @@ def render_report_text(report: ReportData) -> str:
     return "\n".join(lines)
 
 
-def print_report(report: ReportData) -> None:
-    print(render_report_text(report))
+def render_report_html(generated_at: str, report_text: str) -> str:
+    # fromisoformat parses "+08:00" into its own generic offset tzinfo, which
+    # doesn't carry config.SGT's "SGT" name — astimezone swaps in our named
+    # tzinfo (same offset) so strftime("%Z") below prints "SGT" not "UTC+08:00".
+    generated_at = datetime.fromisoformat(generated_at).astimezone(config.SGT)
+    template = _jinja_env.get_template("index.html.j2")
+    return template.render(
+        generated_at_display=generated_at.strftime("%Y-%m-%d %H:%M %Z"),
+        report_text=report_text,
+    )
