@@ -72,7 +72,7 @@ def build_report(result: ScanResult) -> ReportData:
             )
             lines.append(
                 f"  {show.movie_title:<{movie_width}} "
-                f"{show.display_time:>8}  {show.venue_name:<{venue_width}}  "
+                f"{show.venue_name:<{venue_width}}  {show.display_time:>8}  "
                 f"{show.availability_pct:5.1f}%  "
                 f"(AV {show.available:3d}/{show.total_seats:3d})  "
                 f"{status_label:<13}"
