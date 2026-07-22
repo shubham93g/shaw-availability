@@ -37,14 +37,11 @@ jobs:
 
       - name: Generate report
         run: |
-          REPORT_TEXT="$(python main.py report)"
-          echo "$REPORT_TEXT"
           {
-            echo "### Shaw IMAX Availability Report — $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')"
             echo '```'
-            echo "$REPORT_TEXT"
+            python main.py report
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Publish scan output to the "latest" release
         env:
