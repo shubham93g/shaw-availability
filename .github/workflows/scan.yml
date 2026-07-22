@@ -52,6 +52,14 @@ jobs:
             echo "</pre></body></html>"
           } > site/index.html
 
+      - name: Deploy to Cloudflare Pages
+        if: ${{ !cancelled() }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=shaw-availability
+
       - uses: actions/upload-pages-artifact@v3
         if: ${{ !cancelled() }}
         with:

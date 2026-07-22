@@ -111,6 +111,22 @@ inactivity. A Cloudflare Worker gets the "doesn't depend on a machine being
 awake" property of GitHub's cron without those drift/suspension issues. See
 `cron-trigger/README.md` for setup and how to fire a manual test run.
 
+## Hosting
+
+Each run publishes the same `site/index.html` to two destinations:
+GitHub Pages (`<owner>.github.io/...`) and Cloudflare Pages
+(`<project-name>.pages.dev` — a name chosen at project creation, not tied
+to any account identity, unlike the GitHub Pages URL). The two publishes
+are independent: a failure in one never blocks the other.
+
+One-time setup for the Cloudflare Pages side:
+1. Create the Pages project: `wrangler pages project create
+   shaw-availability --production-branch=main` (or via the dashboard).
+2. Create a Cloudflare API token scoped to **Cloudflare Pages — Edit**:
+   https://dash.cloudflare.com/profile/api-tokens
+3. Add it, plus the Cloudflare account ID, as GitHub Actions repo secrets:
+   `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+
 ## Not yet built
 
 Telegram delivery of results. `report.py` already splits report-building
