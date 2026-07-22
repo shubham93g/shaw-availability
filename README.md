@@ -91,9 +91,10 @@ shaw_availability/
 ## Scheduling
 
 `.github/workflows/scan.yml` only reacts to `workflow_dispatch` — it no
-longer self-schedules. Runs are triggered externally, every 30 minutes, by
-a Cloudflare Worker on a Cron Trigger (`cron-trigger/`) that calls GitHub's
-`workflow_dispatch` API. GitHub Pages is published the standard way
+longer self-schedules. Runs are triggered externally, every 30 minutes from
+7:00am to 11:00pm SGT, by a Cloudflare Worker on a Cron Trigger
+(`cron-trigger/`) that calls GitHub's `workflow_dispatch` API. GitHub Pages
+is published the standard way
 (`actions/upload-pages-artifact` + `actions/deploy-pages`), and is skipped
 if the scan run is cancelled.
 
