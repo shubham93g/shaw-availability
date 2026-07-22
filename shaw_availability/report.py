@@ -39,9 +39,18 @@ def _booking_url(performance_id: int) -> str:
     return config.BOOKING_URL_TEMPLATE.format(performance_id=performance_id)
 
 
+def _availability_style(pct: float) -> str:
+    # A soft green tint scaling with availability, not a saturated color:
+    # alpha is capped well below 1 so even 100% availability stays a muted
+    # tint over white rather than solid green.
+    alpha = max(0.0, min(pct, 100.0)) / 100 * 0.28
+    return f"background-color: rgba(46, 125, 50, {alpha:.2f})"
+
+
 _jinja_env.globals["booking_url"] = _booking_url
 _jinja_env.globals["status_label"] = _status_label
 _jinja_env.globals["short_date"] = _short_date_label
+_jinja_env.globals["availability_style"] = _availability_style
 
 
 @dataclass

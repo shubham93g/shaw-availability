@@ -27,7 +27,7 @@
   </style>
 </head>
 <body>
-  {% macro cell(content, css_class="") %}<td{% if css_class %} class="{{ css_class }}"{% endif %}>{{ content }}</td>{% endmacro %}
+  {% macro cell(content, css_class="", style="") %}<td{% if css_class %} class="{{ css_class }}"{% endif %}{% if style %} style="{{ style }}"{% endif %}>{{ content }}</td>{% endmacro %}
 
   {% macro book_cell(url) %}<td class="cell-book"><a href="{{ url }}" target="_blank" rel="noopener noreferrer">Book</a></td>{% endmacro %}
 
@@ -46,7 +46,7 @@
     {{ cell(show.movie_title) }}
     {{ cell(show.venue_name) }}
     {{ cell(show.display_time, "cell-time") }}
-    {{ cell("%.1f%%"|format(show.availability_pct)) }}
+    {{ cell("%.1f%%"|format(show.availability_pct), style=availability_style(show.availability_pct)) }}
     {{ cell(show.available ~ "/" ~ show.total_seats) }}
     {{ cell(status_label(show.api_seating_status)) }}
     {{ cell(show.best_seats_available|join(", ") if show.best_seats_available else "-") }}
