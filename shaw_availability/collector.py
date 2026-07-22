@@ -35,7 +35,7 @@ def parse_show_times(raw_movies: list[dict]) -> list[ShowTime]:
             try:
                 seating_status = raw_show.get("seatingStatus", "")
                 if (
-                    seating_status not in config.KNOWN_SEATING_STATUSES
+                    seating_status not in config.KNOWN_SHOW_STATUSES
                     and seating_status not in _logged_unknown_seating_statuses
                 ):
                     _logged_unknown_seating_statuses.add(seating_status)
