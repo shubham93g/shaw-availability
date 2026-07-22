@@ -30,7 +30,7 @@ pip install -r requirements.txt
 python main.py                    # default: 14 days starting today
 python main.py --days 3           # scan a shorter window
 python main.py --start-date 2026-08-01
-python main.py --output-dir myrun --verbose
+python main.py --verbose
 ```
 
 ## APIs used
@@ -69,8 +69,8 @@ literal zero availability.
 
 ## Output
 
-Each run writes `scan_result.json` (the full scan result) to
-`output/<SGT-timestamp>/`.
+Each run writes `scan_result.json` (the full scan result) to the repo root,
+overwriting the previous run's output.
 
 ## Project layout
 
@@ -86,7 +86,6 @@ shaw_availability/
 │   ├── persistence.py        # JSON output writer
 │   ├── report.py             # builds and prints the console report
 │   └── cli.py                # argument parsing and wiring
-└── output/                   # created at runtime, gitignored
 ```
 
 ## Scheduling

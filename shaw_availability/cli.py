@@ -4,7 +4,6 @@ import argparse
 import logging
 from collections import Counter
 from datetime import date, datetime
-from pathlib import Path
 
 from . import api_client, collector, config, persistence, report
 
@@ -22,12 +21,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=_parse_date,
         default=None,
         help="Start date as YYYY-MM-DD (default: today).",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=config.OUTPUT_DIR,
-        help=f"Directory to write results to (default: {config.OUTPUT_DIR}).",
     )
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
     return parser.parse_args(argv)
@@ -49,8 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     session = api_client.build_session()
     result = collector.run_scan(session, start_date=start_date, max_days=args.days)
 
-    run_dir = persistence.make_run_dir(args.output_dir, datetime.now(config.SGT))
-    persistence.save_scan_result_json(result, run_dir)
+    persistence.save_scan_result_json(result)
 
     report_data = report.build_report(result)
     report.print_report(report_data)

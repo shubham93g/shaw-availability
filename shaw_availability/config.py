@@ -1,5 +1,4 @@
 from datetime import timedelta, timezone
-from pathlib import Path
 
 SGT = timezone(timedelta(hours=8))
 
@@ -44,5 +43,3 @@ SHOW_STATUS_LABELS = {
     "SF": "Selling Fast",
     "SO": "Sold Out",
 }
-
-OUTPUT_DIR = Path("output")

@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
       - name: Run scan
         run: |
           set -o pipefail
@@ -60,9 +63,9 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload latest site/index.html report.txt --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload latest site/index.html report.txt scan_result.json --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create latest site/index.html report.txt \
+            gh release create latest site/index.html report.txt scan_result.json \
               --repo "$GITHUB_REPOSITORY" \
               --title "Latest scan" \
               --notes "Automated scan output, overwritten every run. Not a software release."
