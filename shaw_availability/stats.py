@@ -71,8 +71,5 @@ def aggregate_day(date: str, shows: list[ShowStats]) -> DayAggregate:
 
 def summarize_scan(shows: list[ShowStats]) -> dict:
     ascending = sorted(shows, key=lambda s: s.availability_pct)
-    n = config.HIGHLIGHT_SHOW_COUNT
-    return {
-        "most_available_shows": list(reversed(ascending[-n:])),
-        "least_available_shows": ascending[:n],
-    }
+    n = config.MOST_AVAILABLE_COUNT
+    return {"most_available_shows": list(reversed(ascending[-n:]))}

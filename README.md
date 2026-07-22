@@ -16,8 +16,8 @@ IMAX showtimes are, across all venues, over the next two weeks.
 2. For every showtime found, calls `get_layouts` once to pull the full seat
    map for that performance.
 3. Computes seat-availability stats per show, per day, and for the whole
-   scan, and prints a console report — including the top 5 most- and
-   least-available showtimes across the whole scan.
+   scan, and prints a console report — including the top 10 most-available
+   showtimes across the whole scan.
 4. Persists results to disk so availability can be tracked over time.
 5. Logs progress in real time (which date/showtime it's on) at the default
    log level, so a long scan doesn't look hung — pass `--verbose` for

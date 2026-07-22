@@ -60,7 +60,6 @@ class ReportData:
     total_shows: int
     day_sections: list[DaySection] = field(default_factory=list)
     most_available_shows: list[ShowStats] = field(default_factory=list)
-    least_available_shows: list[ShowStats] = field(default_factory=list)
     failed_calls: list[FailedCall] = field(default_factory=list)
 
 
@@ -96,7 +95,6 @@ def build_report(result: ScanResult) -> ReportData:
         total_shows=len(result.shows),
         day_sections=day_sections,
         most_available_shows=summary["most_available_shows"],
-        least_available_shows=summary["least_available_shows"],
         failed_calls=result.failed_calls,
     )
 
@@ -149,12 +147,6 @@ def render_report_text(report: ReportData) -> str:
     lines.append("-- Highlights --")
     lines.append(f"Top {len(report.most_available_shows)} most available:")
     for s in report.most_available_shows:
-        lines.append(
-            f"  {s.availability_pct:5.1f}%  {s.movie_title} @ {s.venue_name} "
-            f"{_with_weekday(s.display_date)} {s.display_time}"
-        )
-    lines.append(f"Top {len(report.least_available_shows)} least available:")
-    for s in report.least_available_shows:
         lines.append(
             f"  {s.availability_pct:5.1f}%  {s.movie_title} @ {s.venue_name} "
             f"{_with_weekday(s.display_date)} {s.display_time}"

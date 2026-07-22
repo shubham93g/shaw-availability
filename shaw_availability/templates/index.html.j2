@@ -85,23 +85,12 @@
     <p>No shows scanned.</p>
   {% endif %}
 
-  <h2>Highlights</h2>
-  <h3>Top {{ report.most_available_shows|length }} most available</h3>
+  <h2>Top {{ report.most_available_shows|length }} Most Available</h2>
   {% if report.most_available_shows %}
   <div class="table-scroll">
     <table>
       {{ show_table_head() }}
       <tbody>{% for show in report.most_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
-    </table>
-  </div>
-  {% else %}<p>n/a</p>{% endif %}
-
-  <h3>Top {{ report.least_available_shows|length }} least available</h3>
-  {% if report.least_available_shows %}
-  <div class="table-scroll">
-    <table>
-      {{ show_table_head() }}
-      <tbody>{% for show in report.least_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
     </table>
   </div>
   {% else %}<p>n/a</p>{% endif %}
