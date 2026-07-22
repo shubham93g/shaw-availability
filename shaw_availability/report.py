@@ -96,7 +96,7 @@ def build_report(result: ScanResult) -> ReportData:
 def render_report_text(report: ReportData) -> str:
     lines: list[str] = []
     lines.append("=" * 70)
-    lines.append("Shaw IMAX Seat-Availability Report")
+    lines.append("Shaw IMAX Availability Report")
     lines.append(f"Generated: {report.generated_at}")
     lines.append("=" * 70)
     lines.extend(report.overview_lines)
