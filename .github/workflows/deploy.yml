@@ -1,0 +1,44 @@
+name: Deploy Shaw IMAX Availability Report
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download latest scan output
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p site
+          gh release download latest --repo "$GITHUB_REPOSITORY" --pattern "index.html" --dir site --clobber
+
+      - uses: actions/upload-pages-artifact@v3
+        if: ${{ !cancelled() }}
+        with:
+          path: site
+
+      - id: deployment
+        if: ${{ !cancelled() }}
+        uses: actions/deploy-pages@v4
+
+      - name: Deploy to Cloudflare Pages
+        if: ${{ !cancelled() }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=shaw-availability

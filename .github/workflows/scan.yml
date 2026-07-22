@@ -1,15 +1,19 @@
 name: Shaw IMAX Availability Scan
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Trigger the deploy workflow after a successful scan"
+        type: boolean
+        default: true
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
+  actions: write
 
 concurrency:
-  group: pages
+  group: scan
   cancel-in-progress: false
 
 jobs:
@@ -52,26 +56,22 @@ jobs:
             echo "</pre></body></html>"
           } > site/index.html
 
-      - name: Deploy to Cloudflare Pages
+      - name: Publish scan output to the "latest" release
         if: ${{ !cancelled() }}
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy site --project-name=shaw-availability
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload latest site/index.html report.txt --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create latest site/index.html report.txt \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Latest scan" \
+              --notes "Automated scan output, overwritten every run. Not a software release."
+          fi
 
-      - uses: actions/upload-pages-artifact@v3
-        if: ${{ !cancelled() }}
-        with:
-          path: site
-
-  deploy:
-    if: ${{ !cancelled() }}
-    needs: scan
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Trigger deploy workflow
+        if: ${{ !cancelled() && inputs.deploy }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"

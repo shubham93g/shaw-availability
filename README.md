@@ -1,6 +1,7 @@
 # Shaw IMAX Seat-Availability Scanner
 
 [![Shaw IMAX Availability Scan](https://github.com/shubham93g/shaw-availability/actions/workflows/scan.yml/badge.svg?branch=main)](https://github.com/shubham93g/shaw-availability/actions/workflows/scan.yml)
+[![Deploy Shaw IMAX Availability Report](https://github.com/shubham93g/shaw-availability/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/shubham93g/shaw-availability/actions/workflows/deploy.yml)
 
 Scans Shaw Theatres' internal IMAX booking API to see how full upcoming
 IMAX showtimes are, across all venues, over the next two weeks.
@@ -90,13 +91,25 @@ shaw_availability/
 
 ## Scheduling
 
-`.github/workflows/scan.yml` only reacts to `workflow_dispatch` — it no
-longer self-schedules. Runs are triggered externally, every 30 minutes from
-7:00am to 11:00pm SGT, by a Cloudflare Worker on a Cron Trigger
-(`cron-trigger/`) that calls GitHub's `workflow_dispatch` API. GitHub Pages
-is published the standard way
-(`actions/upload-pages-artifact` + `actions/deploy-pages`), and is skipped
-if the scan run is cancelled.
+Scanning and publishing are split across two workflows:
+
+- **`.github/workflows/scan.yml`** runs the scan, builds `report.txt` and
+  `site/index.html`, and publishes both as assets on a single reused GitHub
+  Release tagged `latest` (overwritten every run — it's a snapshot, not a
+  versioned release). It only reacts to `workflow_dispatch` — it no longer
+  self-schedules. Runs are triggered externally, every 30 minutes from
+  7:00am to 11:00pm SGT, by a Cloudflare Worker on a Cron Trigger
+  (`cron-trigger/`) that calls GitHub's `workflow_dispatch` API. After
+  publishing, it dispatches `deploy.yml` itself (`gh workflow run
+  deploy.yml`), unless run with its `deploy` input set to `false`.
+- **`.github/workflows/deploy.yml`** takes whatever is currently in the
+  `latest` release and publishes it to GitHub Pages
+  (`actions/upload-pages-artifact` + `actions/deploy-pages`) and Cloudflare
+  Pages. It only reacts to `workflow_dispatch` — either the one scan.yml
+  fires automatically after a successful scan, or a manual run to retry a
+  failed deploy. It always re-fetches whatever is currently in the `latest`
+  release, so a retry needs no extra bookkeeping about which run it came
+  from.
 
 This is the third scheduling mechanism this project has used. The first two
 were a locally-run trigger (first a Python loop, later a macOS `launchd`
@@ -113,7 +126,7 @@ awake" property of GitHub's cron without those drift/suspension issues. See
 
 ## Hosting
 
-Each run publishes the same `site/index.html` to two destinations:
+Each deploy run publishes the same `index.html` to two destinations:
 GitHub Pages (`<owner>.github.io/...`) and Cloudflare Pages
 (`<project-name>.pages.dev` — a name chosen at project creation, not tied
 to any account identity, unlike the GitHub Pages URL). The two publishes
