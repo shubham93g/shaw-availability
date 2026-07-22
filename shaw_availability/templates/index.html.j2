@@ -2,10 +2,12 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Shaw IMAX Availability</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; }
+    .table-scroll { overflow-x: auto; margin-bottom: 1.5rem; }
+    table { border-collapse: collapse; width: 100%; min-width: 700px; }
     th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
     th { background: #f4f4f4; }
     tbody tr:hover { background: #f9fafb; }
@@ -70,12 +72,14 @@
     {% for section in report.day_sections %}
       <h2>{{ short_date(section.date) }}</h2>
       <p>{{ section.show_count }} show(s), avg availability {{ "%.1f"|format(section.avg_availability_pct) }}%</p>
-      <table>
-        {{ show_table_head(show_date=False) }}
-        <tbody>
-          {% for show in section.shows %}{{ show_row(show, show_date=False) }}{% endfor %}
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          {{ show_table_head(show_date=False) }}
+          <tbody>
+            {% for show in section.shows %}{{ show_row(show, show_date=False) }}{% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% endfor %}
   {% else %}
     <p>No shows scanned.</p>
@@ -84,18 +88,22 @@
   <h2>Highlights</h2>
   <h3>Top {{ report.most_available_shows|length }} most available</h3>
   {% if report.most_available_shows %}
-  <table>
-    {{ show_table_head() }}
-    <tbody>{% for show in report.most_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
-  </table>
+  <div class="table-scroll">
+    <table>
+      {{ show_table_head() }}
+      <tbody>{% for show in report.most_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
+    </table>
+  </div>
   {% else %}<p>n/a</p>{% endif %}
 
   <h3>Top {{ report.least_available_shows|length }} least available</h3>
   {% if report.least_available_shows %}
-  <table>
-    {{ show_table_head() }}
-    <tbody>{% for show in report.least_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
-  </table>
+  <div class="table-scroll">
+    <table>
+      {{ show_table_head() }}
+      <tbody>{% for show in report.least_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
+    </table>
+  </div>
   {% else %}<p>n/a</p>{% endif %}
 
   {% if report.failed_calls %}
