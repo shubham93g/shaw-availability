@@ -20,6 +20,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download latest scan output
+        id: download
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -27,16 +28,17 @@ jobs:
           gh release download latest --repo "$GITHUB_REPOSITORY" --pattern "index.html" --dir site --clobber
 
       - uses: actions/upload-pages-artifact@v3
-        if: ${{ !cancelled() }}
         with:
           path: site
 
       - id: deployment
-        if: ${{ !cancelled() }}
         uses: actions/deploy-pages@v4
 
+      # Independent of the GitHub Pages steps above: a Pages failure shouldn't
+      # skip this. Still gated on the download succeeding, and !cancelled()
+      # keeps a manual cancellation from forcing this step to run anyway.
       - name: Deploy to Cloudflare Pages
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.download.outcome == 'success' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

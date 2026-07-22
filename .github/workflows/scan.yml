@@ -35,7 +35,6 @@ jobs:
           python main.py 2>&1 | tee report.txt
 
       - name: Build report summary and static page
-        if: ${{ !cancelled() }}
         run: |
           {
             echo "### Shaw IMAX Availability Report — $(TZ='Asia/Singapore' date +'%Y-%m-%d %H:%M %Z')"
@@ -57,7 +56,6 @@ jobs:
           } > site/index.html
 
       - name: Publish scan output to the "latest" release
-        if: ${{ !cancelled() }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -70,8 +68,11 @@ jobs:
               --notes "Automated scan output, overwritten every run. Not a software release."
           fi
 
+      # success() is explicit here, not implicit: adding the inputs.deploy
+      # check to `if` drops GitHub Actions' default "only run if everything
+      # before this succeeded" behavior, so it has to be written back in.
       - name: Trigger deploy workflow
-        if: ${{ !cancelled() && inputs.deploy }}
+        if: ${{ success() && inputs.deploy }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
