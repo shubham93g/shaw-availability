@@ -40,7 +40,7 @@ def _parse_date(value: str) -> date:
 
 
 def _run_scan(args: argparse.Namespace) -> None:
-    start_date = args.start_date or date.today()
+    start_date = args.start_date or datetime.now(config.SGT).date()
 
     session = api_client.build_session()
     result = collector.run_scan(session, start_date=start_date, max_days=args.days)
