@@ -70,6 +70,7 @@ class ReportData:
     day_sections: list[DaySection] = field(default_factory=list)
     most_available_shows: list[ShowStats] = field(default_factory=list)
     failed_calls: list[FailedCall] = field(default_factory=list)
+    venues: list[str] = field(default_factory=list)
 
 
 def build_report(result: ScanResult) -> ReportData:
@@ -105,6 +106,7 @@ def build_report(result: ScanResult) -> ReportData:
         day_sections=day_sections,
         most_available_shows=summary["most_available_shows"],
         failed_calls=result.failed_calls,
+        venues=sorted({s.venue_name for s in result.shows}),
     )
 
 

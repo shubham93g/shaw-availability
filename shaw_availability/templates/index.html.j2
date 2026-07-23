@@ -29,6 +29,9 @@
       box-shadow: inset 4px 0 0 0 #b45309;
     }
     h2 { margin-top: 2rem; }
+    #venue-filter { display: flex; flex-wrap: wrap; gap: 0.6rem 1.2rem; margin: 1rem 0; }
+    #venue-filter label { display: inline-flex; align-items: center; gap: 0.35rem; }
+    tr[data-venue].venue-hidden { display: none; }
   </style>
 </head>
 <body>
@@ -46,7 +49,7 @@
   {% endmacro %}
 
   {% macro show_row(show, show_date=True) %}
-  <tr data-performance-id="{{ show.performance_id }}">
+  <tr data-performance-id="{{ show.performance_id }}" data-venue="{{ show.venue_name }}" data-availability="{{ show.availability_pct }}">
     {% if show_date %}{{ cell(short_date(show.display_date)) }}{% endif %}
     {{ cell(show.movie_title) }}
     {{ cell(show.venue_name) }}
@@ -73,24 +76,34 @@
     Failed API calls: {{ report.failed_calls|length }}
   </p>
 
+  {% if report.venues %}
+  <div id="venue-filter">
+    {% for venue in report.venues %}
+    <label><input type="checkbox" class="venue-checkbox" value="{{ venue }}" checked> {{ venue }}</label>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if report.day_sections %}
     {% for section in report.day_sections %}
-      <h2>{{ short_date(section.date) }}</h2>
-      <p>{{ section.show_count }} show(s), avg availability {{ "%.1f"|format(section.avg_availability_pct) }}%</p>
-      <div class="table-scroll">
-        <table>
-          {{ show_table_head(show_date=False) }}
-          <tbody>
-            {% for show in section.shows %}{{ show_row(show, show_date=False) }}{% endfor %}
-          </tbody>
-        </table>
-      </div>
+      <section data-day-section>
+        <h2>{{ short_date(section.date) }}</h2>
+        <p><span class="show-count">{{ section.show_count }}</span> show(s), avg availability <span class="avg-pct">{{ "%.1f"|format(section.avg_availability_pct) }}</span>%</p>
+        <div class="table-scroll">
+          <table>
+            {{ show_table_head(show_date=False) }}
+            <tbody>
+              {% for show in section.shows %}{{ show_row(show, show_date=False) }}{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
     {% endfor %}
   {% else %}
     <p>No shows scanned.</p>
   {% endif %}
 
-  <h2>Top {{ report.most_available_shows|length }} Most Available</h2>
+  <h2>Top Most Available</h2>
   {% if report.most_available_shows %}
   <div class="table-scroll">
     <table>
@@ -122,6 +135,71 @@
           matchedRow.classList.add("row-clicked");
         });
     });
+  </script>
+
+  <script>
+    var VENUE_FILTER_KEY = "shaw-venue-filter";
+    var checkboxes = Array.prototype.slice.call(document.querySelectorAll(".venue-checkbox"));
+
+    function selectedVenues() {
+      return checkboxes.filter(function (cb) { return cb.checked; }).map(function (cb) { return cb.value; });
+    }
+
+    function applyFilter() {
+      var selected = selectedVenues();
+      var selectedSet = {};
+      selected.forEach(function (v) { selectedSet[v] = true; });
+
+      document.querySelectorAll("tr[data-venue]").forEach(function (row) {
+        var visible = !!selectedSet[row.getAttribute("data-venue")];
+        row.classList.toggle("venue-hidden", !visible);
+      });
+
+      document.querySelectorAll("[data-day-section]").forEach(function (section) {
+        var visibleRows = Array.prototype.slice
+          .call(section.querySelectorAll("tr[data-venue]"))
+          .filter(function (row) { return !row.classList.contains("venue-hidden"); });
+        var countEl = section.querySelector(".show-count");
+        var avgEl = section.querySelector(".avg-pct");
+        if (countEl) countEl.textContent = visibleRows.length;
+        if (avgEl) {
+          if (visibleRows.length === 0) {
+            avgEl.textContent = "n/a";
+          } else {
+            var total = visibleRows.reduce(function (sum, row) {
+              return sum + parseFloat(row.getAttribute("data-availability"));
+            }, 0);
+            avgEl.textContent = (total / visibleRows.length).toFixed(1);
+          }
+        }
+      });
+    }
+
+    if (checkboxes.length) {
+      try {
+        var stored = JSON.parse(localStorage.getItem(VENUE_FILTER_KEY) || "null");
+        if (Array.isArray(stored)) {
+          var knownVenues = checkboxes.map(function (cb) { return cb.value; });
+          var storedValid = stored.filter(function (v) { return knownVenues.indexOf(v) !== -1; });
+          if (storedValid.length) {
+            var storedSet = {};
+            storedValid.forEach(function (v) { storedSet[v] = true; });
+            checkboxes.forEach(function (cb) { cb.checked = !!storedSet[cb.value]; });
+          }
+        }
+      } catch (e) {
+        // Ignore malformed localStorage content and keep the default all-checked state.
+      }
+
+      checkboxes.forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          localStorage.setItem(VENUE_FILTER_KEY, JSON.stringify(selectedVenues()));
+          applyFilter();
+        });
+      });
+
+      applyFilter();
+    }
   </script>
 </body>
 </html>
