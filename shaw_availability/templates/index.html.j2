@@ -83,6 +83,16 @@
   </div>
   {% endif %}
 
+  <section data-most-available data-most-available-count="{{ most_available_count }}">
+    <h2>Top Most Available</h2>
+    <div class="table-scroll">
+      <table>
+        {{ show_table_head() }}
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
   {% if report.day_sections %}
     {% for section in report.day_sections %}
       <section data-day-section>
@@ -101,16 +111,6 @@
   {% else %}
     <p>No shows scanned.</p>
   {% endif %}
-
-  <section data-most-available data-most-available-count="{{ most_available_count }}">
-    <h2>Top Most Available</h2>
-    <div class="table-scroll">
-      <table>
-        {{ show_table_head() }}
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
 
   {% if report.failed_calls %}
   <h2>Failed calls ({{ report.failed_calls|length }})</h2>
