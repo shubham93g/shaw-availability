@@ -67,9 +67,3 @@ def aggregate_day(date: str, shows: list[ShowStats]) -> DayAggregate:
         avg_availability_pct=sum(s.availability_pct for s in shows) / len(shows),
         sold_out_show_count=sum(1 for s in shows if s.availability_pct == 0.0),
     )
-
-
-def summarize_scan(shows: list[ShowStats]) -> dict:
-    ascending = sorted(shows, key=lambda s: s.availability_pct)
-    n = config.MOST_AVAILABLE_COUNT
-    return {"most_available_shows": list(reversed(ascending[-n:]))}

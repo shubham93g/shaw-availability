@@ -48,9 +48,8 @@
   </thead>
   {% endmacro %}
 
-  {% macro show_row(show, show_date=True) %}
-  <tr data-performance-id="{{ show.performance_id }}" data-venue="{{ show.venue_name }}" data-availability="{{ show.availability_pct }}">
-    {% if show_date %}{{ cell(short_date(show.display_date)) }}{% endif %}
+  {% macro show_row(show) %}
+  <tr data-performance-id="{{ show.performance_id }}" data-venue="{{ show.venue_name }}" data-availability="{{ show.availability_pct }}" data-date-label="{{ short_date(show.display_date) }}">
     {{ cell(show.movie_title) }}
     {{ cell(show.venue_name) }}
     {{ cell(show.display_time, "cell-time") }}
@@ -93,7 +92,7 @@
           <table>
             {{ show_table_head(show_date=False) }}
             <tbody>
-              {% for show in section.shows %}{{ show_row(show, show_date=False) }}{% endfor %}
+              {% for show in section.shows %}{{ show_row(show) }}{% endfor %}
             </tbody>
           </table>
         </div>
@@ -103,15 +102,15 @@
     <p>No shows scanned.</p>
   {% endif %}
 
-  <h2>Top Most Available</h2>
-  {% if report.most_available_shows %}
-  <div class="table-scroll">
-    <table>
-      {{ show_table_head() }}
-      <tbody>{% for show in report.most_available_shows %}{{ show_row(show) }}{% endfor %}</tbody>
-    </table>
-  </div>
-  {% else %}<p>n/a</p>{% endif %}
+  <section data-most-available data-most-available-count="{{ most_available_count }}">
+    <h2>Top Most Available</h2>
+    <div class="table-scroll">
+      <table>
+        {{ show_table_head() }}
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 
   {% if report.failed_calls %}
   <h2>Failed calls ({{ report.failed_calls|length }})</h2>
@@ -145,6 +144,32 @@
       return checkboxes.filter(function (cb) { return cb.checked; }).map(function (cb) { return cb.value; });
     }
 
+    function rebuildMostAvailable() {
+      var section = document.querySelector("[data-most-available]");
+      if (!section) return;
+      var tbody = section.querySelector("tbody");
+      if (!tbody) return;
+
+      var n = parseInt(section.getAttribute("data-most-available-count"), 10);
+      var candidates = Array.prototype.slice
+        .call(document.querySelectorAll("[data-day-section] tr[data-venue]"))
+        .filter(function (row) { return !row.classList.contains("venue-hidden"); })
+        .sort(function (a, b) {
+          return parseFloat(b.getAttribute("data-availability")) - parseFloat(a.getAttribute("data-availability"));
+        })
+        .slice(0, n);
+
+      tbody.innerHTML = "";
+      candidates.forEach(function (row) {
+        var clone = row.cloneNode(true);
+        clone.classList.remove("venue-hidden");
+        var dateCell = document.createElement("td");
+        dateCell.textContent = row.getAttribute("data-date-label");
+        clone.insertBefore(dateCell, clone.firstChild);
+        tbody.appendChild(clone);
+      });
+    }
+
     function applyFilter() {
       var selected = selectedVenues();
       var selectedSet = {};
@@ -173,6 +198,8 @@
           }
         }
       });
+
+      rebuildMostAvailable();
     }
 
     if (checkboxes.length) {

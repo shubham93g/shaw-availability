@@ -6,7 +6,7 @@ from pathlib import Path
 
 import jinja2
 
-from . import config, stats
+from . import config
 from .models import FailedCall, ScanResult, ShowStats
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -51,6 +51,7 @@ _jinja_env.globals["booking_url"] = _booking_url
 _jinja_env.globals["status_label"] = _status_label
 _jinja_env.globals["short_date"] = _short_date_label
 _jinja_env.globals["availability_style"] = _availability_style
+_jinja_env.globals["most_available_count"] = config.MOST_AVAILABLE_COUNT
 
 
 @dataclass
@@ -68,14 +69,11 @@ class ReportData:
     stop_reason: str
     total_shows: int
     day_sections: list[DaySection] = field(default_factory=list)
-    most_available_shows: list[ShowStats] = field(default_factory=list)
     failed_calls: list[FailedCall] = field(default_factory=list)
     venues: list[str] = field(default_factory=list)
 
 
 def build_report(result: ScanResult) -> ReportData:
-    summary = stats.summarize_scan(result.shows)
-
     # total_shows is len(result.shows) directly, not a sum over day_sections:
     # collector.run_scan unions in any date a show's display_date points to,
     # but keeping this as a direct count (rather than relying on that
@@ -104,7 +102,6 @@ def build_report(result: ScanResult) -> ReportData:
         stop_reason=result.stop_reason,
         total_shows=len(result.shows),
         day_sections=day_sections,
-        most_available_shows=summary["most_available_shows"],
         failed_calls=result.failed_calls,
         venues=sorted({s.venue_name for s in result.shows}),
     )
@@ -154,14 +151,6 @@ def render_report_text(report: ReportData) -> str:
         for show in section.shows:
             lines.append(_format_show_line(show, movie_width, venue_width))
         lines.append("")
-
-    lines.append("-- Highlights --")
-    lines.append(f"Top {len(report.most_available_shows)} most available:")
-    for s in report.most_available_shows:
-        lines.append(
-            f"  {s.availability_pct:5.1f}%  {s.movie_title} @ {s.venue_name} "
-            f"{_with_weekday(s.display_date)} {s.display_time}"
-        )
 
     if report.failed_calls:
         lines.append("")

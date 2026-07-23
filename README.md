@@ -83,13 +83,23 @@ overwriting the previous run's output.
 
 ## Report page
 
+A checkbox per venue lets you narrow the report down to specific cinemas;
+all venues are checked by default. The selection is remembered across visits
+via `localStorage`, so it persists between page loads on the same browser.
+
 Each show's row in `index.html` has a "Book" link that opens Shaw's own booking
 page for that showtime in a new tab. Clicking it also highlights that row (and
-its duplicate, if the same show also appears in the "Top N Most Available"
+its duplicate, if the same show also appears in the "Top Most Available"
 table) for the rest of that page view, so you can see at a glance which shows
-you've already looked at while scanning the report. This is purely client-side
-(a small inline script, no cookies or local storage) — the highlight resets the
-next time the page is loaded.
+you've already looked at while scanning the report — this highlight resets
+the next time the page is loaded.
+
+"Top Most Available" is computed entirely client-side from whichever venues
+are currently checked: unchecking a venue re-ranks the list from the
+remaining selected venues rather than just hiding rows from a fixed list.
+Each day section's show count and average availability are recomputed the
+same way. All of this — the venue filter, the row highlight, and the
+Most Available ranking — is plain inline JavaScript with no build step.
 
 ## Scheduling
 
