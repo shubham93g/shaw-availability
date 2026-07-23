@@ -36,6 +36,7 @@ python main.py scan --days 3               # scan a shorter window
 python main.py scan --start-date 2026-08-01
 python main.py scan --verbose
 python main.py report                      # build the report from scan_result.json
+python main.py report --verbose
 ```
 
 ## APIs used
@@ -46,8 +47,10 @@ python main.py report                      # build the report from scan_result.j
   — the full seat map for one showtime.
 
 Both are undocumented internal endpoints (used respectfully: sequential
-calls only, throttled ~0.35s apart, small `--days` recommended for quick
-checks).
+calls only, throttled 0.5s apart, small `--days` recommended for quick
+checks). Each request has a 10s timeout; network errors and HTTP 5xx
+responses retry twice with exponential backoff, while HTTP 4xx responses
+fail immediately with no retry.
 
 ## Status codes
 
@@ -78,60 +81,116 @@ literal zero availability.
 (rendered from a Jinja2 template). Both land in `artifacts/` (gitignored),
 overwriting the previous run's output.
 
-## Project layout
+## Report page
 
-```
-shaw_availability/
-├── main.py                  # entrypoint
-├── shaw_availability/
-│   ├── config.py             # URLs, headers, timing/retry constants
-│   ├── api_client.py         # HTTP layer (requests.Session, retries, throttling)
-│   ├── models.py             # dataclasses for showtimes, seats, stats, results
-│   ├── collector.py          # orchestrates the date/showtime/layout scan
-│   ├── stats.py              # pure stat computation
-│   ├── seat_geometry.py      # classifies/compresses best-available seat ranges
-│   ├── persistence.py        # writes index.html/scan_result.json
-│   ├── report.py             # builds the report and renders text/HTML output
-│   ├── templates/            # Jinja2 templates for index.html
-│   └── cli.py                # argument parsing and wiring
-```
+Each show's row in `index.html` has a "Book" link that opens Shaw's own booking
+page for that showtime in a new tab. Clicking it also highlights that row (and
+its duplicate, if the same show also appears in the "Top N Most Available"
+table) for the rest of that page view, so you can see at a glance which shows
+you've already looked at while scanning the report. This is purely client-side
+(a small inline script, no cookies or local storage) — the highlight resets the
+next time the page is loaded.
 
 ## Scheduling
 
 Scanning and publishing are split across two workflows:
 
-- **`.github/workflows/scan.yml`** runs `scan` then `report`, writing
-  `scan_result.json` and `index.html` to a local `artifacts/` folder, and
-  publishes both as assets on a single reused GitHub Release tagged
-  `latest` (overwritten every run — it's a snapshot, not a versioned
-  release). It only reacts to `workflow_dispatch` — it no longer
-  self-schedules. Runs are triggered externally, every 30 minutes from
-  7:00am to 11:00pm SGT, by a Cloudflare Worker on a Cron Trigger
-  (`cron-trigger/`) that calls GitHub's `workflow_dispatch` API. After
-  publishing, it dispatches `deploy.yml` itself (`gh workflow run
-  deploy.yml`), unless run with its `deploy` input set to `false`.
-- **`.github/workflows/deploy.yml`** takes whatever is currently in the
-  `latest` release and publishes it to Cloudflare Pages. It only reacts to
-  `workflow_dispatch` — either the one scan.yml fires automatically after a
-  successful scan, or a manual run to retry a failed deploy. It always
-  re-fetches whatever is currently in the `latest` release, so a retry
-  needs no extra bookkeeping about which run it came from.
+- **`.github/workflows/scan.yml`** first runs the test suite
+  (`python -m unittest discover -s tests -v`) — a failing suite blocks the
+  rest of the run, so a bad change is never scanned or deployed, though
+  this only happens when scan.yml itself fires, not on every pull request.
+  It then runs `scan` then `report`, writing `scan_result.json` and
+  `index.html` to a local `artifacts/` folder, and publishes both as assets
+  on a single reused GitHub Release tagged `latest` (overwritten every run
+  — it's a snapshot, not a versioned release). It only reacts to
+  `workflow_dispatch` — it no longer self-schedules. Runs are triggered
+  externally, every 30 minutes from 7:00am to 11:00pm SGT, by a Cloudflare
+  Worker on a Cron Trigger (see [Cron trigger](#cron-trigger-cloudflare-worker)
+  below) that calls GitHub's `workflow_dispatch` API. After publishing, it
+  dispatches `deploy.yml` itself (`gh workflow run deploy.yml`), unless run
+  with its `deploy` input set to `false`.
+- **`.github/workflows/deploy.yml`** downloads just the `index.html` asset
+  from the `latest` release (`scan_result.json` is published to the release
+  but never deployed) and publishes it to Cloudflare Pages. It only reacts
+  to `workflow_dispatch` — either the one scan.yml fires automatically after
+  a successful scan, or a manual run to retry a failed deploy. It always
+  re-fetches whatever `index.html` is currently in the `latest` release, so
+  a retry needs no extra bookkeeping about which run it came from.
 - **`.github/workflows/pages-redirect.yml`** is not part of this cadence at
   all. It publishes a static redirect page to GitHub Pages and is only run
   manually, once — see [Hosting](#hosting) below.
 
-This is the third scheduling mechanism this project has used. The first two
-were a locally-run trigger (first a Python loop, later a macOS `launchd`
-agent pushing `workflow_dispatch` via `gh`) and, after that, GitHub Actions'
-own `schedule: cron`. The local trigger was abandoned because it only works
-while the triggering Mac is actually awake, and this machine idle-sleeps
-after ~5 minutes of inactivity, so it silently missed most scheduled runs.
-GitHub's native `schedule` cron fixed that (it doesn't depend on any one
-machine being awake), but turned out to have its own reliability problems —
-schedules can drift, and are silently suspended after 60 days of repo
-inactivity. A Cloudflare Worker gets the "doesn't depend on a machine being
-awake" property of GitHub's cron without those drift/suspension issues. See
-`cron-trigger/README.md` for setup and how to fire a manual test run.
+None of scan.yml, deploy.yml, or the Cloudflare Worker send any kind of
+failure notification — a missed or failed run is only discoverable by
+checking the GitHub Actions or Cloudflare dashboards by hand.
+
+GitHub Actions' own `schedule: cron` was tried before the current Cloudflare
+Worker and dropped: schedules can drift, and are silently suspended after 60
+days of repo inactivity. A Worker on a Cron Trigger doesn't depend on any
+machine being awake and has neither of those problems.
+
+## Cron trigger (Cloudflare Worker)
+
+`cron-trigger/` is a small Cloudflare Worker that replaces GitHub Actions'
+native `schedule: cron` (see [Scheduling](#scheduling) above for why). Every
+30 minutes from 7:00am to 11:00pm SGT, it calls GitHub's `workflow_dispatch`
+API to kick off `scan.yml`. Its dispatch target branch is hardcoded to `main`
+(`GITHUB_REF` in `cron-trigger/wrangler.toml`).
+
+**One-time setup:**
+
+1. Install `wrangler` (Cloudflare's CLI), if you don't have it:
+   ```bash
+   npm install -g wrangler
+   ```
+2. Log in (opens a browser to authorize against your Cloudflare account —
+   create a free account first if you don't have one):
+   ```bash
+   wrangler login
+   ```
+3. Create a GitHub **fine-grained personal access token**:
+   https://github.com/settings/personal-access-tokens/new
+   - Resource owner: the repo's owner
+   - Repository access: **Only select repositories** → this repo
+   - Permissions: **Actions → Read and write** (nothing else needed)
+4. Store the token as a Worker secret (paste the PAT when prompted; it is
+   never written to disk in this repo):
+   ```bash
+   cd cron-trigger
+   wrangler secret put GITHUB_TOKEN
+   ```
+5. Deploy:
+   ```bash
+   wrangler deploy
+   ```
+
+**Verifying it works:**
+
+- After `wrangler deploy`, the Cloudflare dashboard (Workers & Pages →
+  `shaw-availability-cron` → Triggers) should list three Cron Triggers —
+  `0,30 23 * * *`, `0,30 0-14 * * *`, and `0 15 * * *` — which together fire
+  every 30 minutes from 7:00am to 11:00pm SGT (Cron Triggers run in UTC; SGT
+  is UTC+8 with no DST, so the window is 23:00 the previous day through
+  15:00 UTC).
+- To fire a test run without waiting for the schedule, use the dashboard's
+  "Trigger Cron Trigger" button under the Triggers tab, or run locally:
+  ```bash
+  wrangler dev
+  # in another terminal:
+  curl "http://localhost:8787/__scheduled?cron=0%2C30+23+*+*+*"
+  ```
+- Either way, check the repo's Actions tab — a new `scan.yml` run should
+  start within a few seconds.
+
+**Changing the schedule:** edit the `crons` array in
+`cron-trigger/wrangler.toml`, then `wrangler deploy` again.
+
+**Viewing logs:** `[observability]` in `wrangler.toml` persists invocation
+logs (not just live tailing), viewable at Workers & Pages →
+`shaw-availability-cron` → Logs in the Cloudflare dashboard — each entry
+includes whether the GitHub dispatch call succeeded or threw. For live
+tailing while testing, `wrangler tail` also works but only shows events from
+when you start it.
 
 ## Hosting
 
@@ -162,3 +221,8 @@ One-time setup for the Cloudflare Pages side:
    ```bash
    gh variable set CLOUDFLARE_PROJECT_NAME --body "shaw-availability"
    ```
+
+This covers publishing only. Scans won't fire on a schedule until the
+[Cron trigger](#cron-trigger-cloudflare-worker) Worker is also set up — it
+needs its own one-time setup and a separate GitHub PAT, not the Cloudflare
+credentials above.
