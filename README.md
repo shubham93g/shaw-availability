@@ -179,18 +179,18 @@ API to kick off `scan.yml`. Its dispatch target branch is hardcoded to `main`
 **Verifying it works:**
 
 - After `wrangler deploy`, the Cloudflare dashboard (Workers & Pages →
-  `shaw-availability-cron` → Triggers) should list four Cron Triggers —
-  `0 17,19,21 * * *`, `0,30 23 * * *`, `0,30 0-14 * * *`, and `0 15 * * *` —
-  which together fire every 30 minutes from 7:00am to 11:00pm SGT, and every
-  2 hours overnight (Cron Triggers run in UTC; SGT is UTC+8 with no DST, so
-  the daytime window is 23:00 the previous day through 15:00 UTC, and the
-  overnight triggers land at 17:00, 19:00, and 21:00 UTC).
+  `shaw-availability-cron` → Triggers) should list two Cron Triggers —
+  `0 15,17,19,21 * * *` and `0,30 23,0-14 * * *` — which together fire every
+  30 minutes from 7:00am to 10:30pm SGT, and every 2 hours overnight (Cron
+  Triggers run in UTC; SGT is UTC+8 with no DST, so the daytime window is
+  23:00 the previous day through 14:30 UTC, and the overnight triggers land
+  at 15:00, 17:00, 19:00, and 21:00 UTC).
 - To fire a test run without waiting for the schedule, use the dashboard's
   "Trigger Cron Trigger" button under the Triggers tab, or run locally:
   ```bash
   wrangler dev
   # in another terminal:
-  curl "http://localhost:8787/__scheduled?cron=0%2C30+23+*+*+*"
+  curl "http://localhost:8787/__scheduled?cron=0%2C30+23%2C0-14+*+*+*"
   ```
 - Either way, check the repo's Actions tab — a new `scan.yml` run should
   start within a few seconds.
