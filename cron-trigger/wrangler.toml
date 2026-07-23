@@ -6,10 +6,13 @@ workers_dev = false
 [triggers]
 # Cloudflare Cron Triggers run in UTC; SGT is UTC+8 with no DST.
 # 7:00am-11:00pm SGT = 23:00 (previous day) - 15:00 UTC, every 30 min.
+# 11:00pm-7:00am SGT (overnight), every 2 hours instead: 11pm and 7am are
+# already covered above, so this only adds 1am/3am/5am SGT = 17:00/19:00/21:00 UTC.
 crons = [
-  "0,30 23 * * *",   # 7:00am, 7:30am SGT
-  "0,30 0-14 * * *", # 8:00am-10:30pm SGT
-  "0 15 * * *",      # 11:00pm SGT
+  "0 17,19,21 * * *", # 1:00am, 3:00am, 5:00am SGT
+  "0,30 23 * * *",    # 7:00am, 7:30am SGT
+  "0,30 0-14 * * *",  # 8:00am-10:30pm SGT
+  "0 15 * * *",       # 11:00pm SGT
 ]
 
 [observability]

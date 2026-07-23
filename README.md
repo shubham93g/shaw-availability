@@ -114,8 +114,9 @@ Scanning and publishing are split across two workflows:
   on a single reused GitHub Release tagged `latest` (overwritten every run
   — it's a snapshot, not a versioned release). It only reacts to
   `workflow_dispatch` — it no longer self-schedules. Runs are triggered
-  externally, every 30 minutes from 7:00am to 11:00pm SGT, by a Cloudflare
-  Worker on a Cron Trigger (see [Cron trigger](#cron-trigger-cloudflare-worker)
+  externally — every 30 minutes from 7:00am to 11:00pm SGT, and every 2
+  hours overnight (11:00pm, 1:00am, 3:00am, 5:00am, 7:00am SGT) — by a
+  Cloudflare Worker on a Cron Trigger (see [Cron trigger](#cron-trigger-cloudflare-worker)
   below) that calls GitHub's `workflow_dispatch` API. After publishing, it
   dispatches `deploy.yml` itself (`gh workflow run deploy.yml`), unless run
   with its `deploy` input set to `false`.
@@ -143,7 +144,8 @@ machine being awake and has neither of those problems.
 
 `cron-trigger/` is a small Cloudflare Worker that replaces GitHub Actions'
 native `schedule: cron` (see [Scheduling](#scheduling) above for why). Every
-30 minutes from 7:00am to 11:00pm SGT, it calls GitHub's `workflow_dispatch`
+30 minutes from 7:00am to 11:00pm SGT, and every 2 hours overnight (11:00pm,
+1:00am, 3:00am, 5:00am, 7:00am SGT), it calls GitHub's `workflow_dispatch`
 API to kick off `scan.yml`. Its dispatch target branch is hardcoded to `main`
 (`GITHUB_REF` in `cron-trigger/wrangler.toml`).
 
@@ -177,11 +179,12 @@ API to kick off `scan.yml`. Its dispatch target branch is hardcoded to `main`
 **Verifying it works:**
 
 - After `wrangler deploy`, the Cloudflare dashboard (Workers & Pages →
-  `shaw-availability-cron` → Triggers) should list three Cron Triggers —
-  `0,30 23 * * *`, `0,30 0-14 * * *`, and `0 15 * * *` — which together fire
-  every 30 minutes from 7:00am to 11:00pm SGT (Cron Triggers run in UTC; SGT
-  is UTC+8 with no DST, so the window is 23:00 the previous day through
-  15:00 UTC).
+  `shaw-availability-cron` → Triggers) should list four Cron Triggers —
+  `0 17,19,21 * * *`, `0,30 23 * * *`, `0,30 0-14 * * *`, and `0 15 * * *` —
+  which together fire every 30 minutes from 7:00am to 11:00pm SGT, and every
+  2 hours overnight (Cron Triggers run in UTC; SGT is UTC+8 with no DST, so
+  the daytime window is 23:00 the previous day through 15:00 UTC, and the
+  overnight triggers land at 17:00, 19:00, and 21:00 UTC).
 - To fire a test run without waiting for the schedule, use the dashboard's
   "Trigger Cron Trigger" button under the Triggers tab, or run locally:
   ```bash
