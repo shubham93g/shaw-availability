@@ -23,6 +23,11 @@
       text-decoration: none;
     }
     td.cell-book a:hover { background: #1d4ed8; }
+    tbody tr.row-clicked { background: #fff7e6; }
+    tbody tr.row-clicked:hover { background: #fdecc8; }
+    tbody tr.row-clicked td:first-child {
+      box-shadow: inset 4px 0 0 0 #b45309;
+    }
     h2 { margin-top: 2rem; }
   </style>
 </head>
@@ -41,7 +46,7 @@
   {% endmacro %}
 
   {% macro show_row(show, show_date=True) %}
-  <tr>
+  <tr data-performance-id="{{ show.performance_id }}">
     {% if show_date %}{{ cell(short_date(show.display_date)) }}{% endif %}
     {{ cell(show.movie_title) }}
     {{ cell(show.venue_name) }}
@@ -103,5 +108,20 @@
     {% endfor %}
   </ul>
   {% endif %}
+
+  <script>
+    document.body.addEventListener("click", function (event) {
+      var link = event.target.closest("td.cell-book a");
+      if (!link) return;
+      var row = link.closest("tr");
+      var performanceId = row && row.getAttribute("data-performance-id");
+      if (!performanceId) return;
+      document
+        .querySelectorAll('tr[data-performance-id="' + performanceId + '"]')
+        .forEach(function (matchedRow) {
+          matchedRow.classList.add("row-clicked");
+        });
+    });
+  </script>
 </body>
 </html>
