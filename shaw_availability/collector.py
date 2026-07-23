@@ -160,10 +160,10 @@ def run_scan(
         logger.debug("%s: %d showtime(s) found", day_str, len(fetch.shows))
         for i, show in enumerate(fetch.shows, start=1):
             logger.debug(
-                "  [%d/%d] fetching seat layout for performanceId=%s (%s %s)",
+                "  [%d/%d] fetching seat layout for %s %s %s",
                 i,
                 len(fetch.shows),
-                show.performance_id,
+                show.movie_title,
                 show.location_venue_name,
                 show.display_time,
             )
