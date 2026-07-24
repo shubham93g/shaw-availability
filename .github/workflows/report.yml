@@ -48,15 +48,7 @@ jobs:
       - name: Publish report output to the "latest" release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload latest artifacts/index.html --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create latest artifacts/index.html \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "Latest scan" \
-              --notes "Automated scan output, overwritten every run. Not a software release."
-          fi
+        run: gh release upload latest artifacts/index.html --repo "$GITHUB_REPOSITORY" --clobber
 
       # success() is explicit here, not implicit: adding the inputs.deploy
       # check to `if` drops GitHub Actions' default "only run if everything

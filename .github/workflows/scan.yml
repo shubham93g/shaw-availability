@@ -44,7 +44,7 @@ jobs:
           else
             gh release create latest artifacts/scan_result.json \
               --repo "$GITHUB_REPOSITORY" \
-              --title "Latest scan" \
+              --title "Latest" \
               --notes "Automated scan output, overwritten every run. Not a software release."
           fi
 
