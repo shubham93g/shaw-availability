@@ -14,11 +14,18 @@ BASE_URL = "https://shaw.sg/internal"
 SHOW_TIMES_PATH = "/get_show_times"
 LAYOUTS_PATH = "/get_layouts"
 
+# locationBrand is a venue-format id, not a live bitmask: values are powers
+# of two (1=DGTL, 2=IMAX, 4=PREM, 8=LUMR, 16=DREM, 32=PDREM, 128=LUMRG,
+# 256=PREMLIDO, 512=PFSDREM), but combining them (e.g. 3 for DGTL+IMAX)
+# returns no results — each id must be queried alone. 0 means unfiltered.
+# See README.md's "APIs used" section for how this was determined.
+LOCATION_BRAND_IMAX = 2
+
 FIXED_SHOW_TIME_PARAMS = {
     "movieId": 0,
     "locationId": 0,
     "promotionId": 0,
-    "locationBrand": 2,
+    "locationBrand": LOCATION_BRAND_IMAX,
 }
 
 HEADERS = {

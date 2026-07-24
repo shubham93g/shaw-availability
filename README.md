@@ -53,6 +53,30 @@ checks). Each request has a 10s timeout; network errors and HTTP 5xx
 responses retry twice with exponential backoff, while HTTP 4xx responses
 fail immediately with no retry.
 
+`locationBrand` is an undocumented venue-format id, mapped by probing
+`get_show_times` with `movieId=0&locationId=0&promotionId=0` and each
+candidate value in turn, then reading distinct `locationVenueBrandCode`
+values off the response:
+
+| `locationBrand` | `locationVenueBrandCode` | venue examples |
+| ---: | --- | --- |
+| `0` | *(unfiltered)* | all of the below |
+| `1` | `DGTL` | standard digital screens |
+| `2` | `IMAX` | IMAX (used by this scanner — `config.LOCATION_BRAND_IMAX`) |
+| `4` | `PREM` | Premiere |
+| `8` | `LUMR` | Lumière |
+| `16` | `DREM` | Dreamers |
+| `32` | `PDREM` | Platinum Dreamers |
+| `128` | `LUMRG` | Lumière Grande |
+| `256` | `PREMLIDO` | Premiere (Lido) |
+| `512` | `PFSDREM` | (unconfirmed Dreamers variant) |
+
+Despite the values being powers of two, this isn't a live bitmask — the
+server doesn't OR results for combined values (e.g. `locationBrand=3` for
+`DGTL`+`IMAX` returns nothing), so each id has to be queried on its own.
+`64` and every other value outside this set returned no results as of this
+writing.
+
 ## Status codes
 
 **Showtime-level `seatingStatus`:** `AV` (available), `SF` (selling fast),
