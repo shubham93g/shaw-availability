@@ -3,6 +3,13 @@ from pathlib import Path
 
 SGT = timezone(timedelta(hours=8), "SGT")
 
+# Canonical wire format for date strings (ShowStats.display_date,
+# DayAggregate.date, ScanResult.dates_scanned, the --start-date CLI arg, and
+# the day param sent to Shaw's API). Must stay zero-padded YYYY-MM-DD:
+# collector.py's day-aggregate union/dedup sorts these strings
+# lexicographically and relies on that matching chronological order.
+DATE_FORMAT = "%Y-%m-%d"
+
 BASE_URL = "https://shaw.sg/internal"
 SHOW_TIMES_PATH = "/get_show_times"
 LAYOUTS_PATH = "/get_layouts"

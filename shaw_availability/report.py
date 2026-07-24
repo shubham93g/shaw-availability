@@ -18,12 +18,12 @@ _jinja_env = jinja2.Environment(
 
 
 def _with_weekday(date_str: str) -> str:
-    weekday = datetime.strptime(date_str, "%Y-%m-%d").strftime("%a")
+    weekday = datetime.strptime(date_str, config.DATE_FORMAT).strftime("%a")
     return f"{date_str} ({weekday})"
 
 
 def _short_date_label(date_str: str) -> str:
-    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    dt = datetime.strptime(date_str, config.DATE_FORMAT)
     return f"{dt.strftime('%a')}, {dt.day} {dt.strftime('%b')}"
 
 
@@ -32,7 +32,7 @@ def _time_sort_key(time_str: str) -> time:
 
 
 def _format_sgt_timestamp(epoch_seconds: int) -> str:
-    return datetime.fromtimestamp(epoch_seconds, tz=config.SGT).strftime("%Y-%m-%d %H:%M %Z")
+    return datetime.fromtimestamp(epoch_seconds, tz=config.SGT).strftime(f"{config.DATE_FORMAT} %H:%M %Z")
 
 
 def _status_label(code: str) -> str:

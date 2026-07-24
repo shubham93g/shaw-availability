@@ -137,11 +137,11 @@ def run_scan(
     shows: list[ShowStats] = []
     stop_reason = "reached_max_days"
 
-    logger.debug("Starting scan: %d day(s) from %s", max_days, start_date.isoformat())
+    logger.debug("Starting scan: %d day(s) from %s", max_days, start_date.strftime(config.DATE_FORMAT))
 
     for offset in range(max_days):
         current_date = start_date + timedelta(days=offset)
-        day_str = current_date.isoformat()
+        day_str = current_date.strftime(config.DATE_FORMAT)
 
         logger.debug("[%d/%d] %s: fetching showtimes...", offset + 1, max_days, day_str)
         fetch = collect_day(session, day_str, failed_calls)

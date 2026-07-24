@@ -36,7 +36,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _parse_date(value: str) -> date:
-    return datetime.strptime(value, "%Y-%m-%d").date()
+    return datetime.strptime(value, config.DATE_FORMAT).date()
 
 
 def _run_scan(args: argparse.Namespace) -> None:
