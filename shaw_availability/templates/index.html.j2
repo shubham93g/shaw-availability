@@ -32,6 +32,15 @@
     #venue-filter { display: flex; flex-wrap: wrap; gap: 0.6rem 1.2rem; margin: 1rem 0; }
     #venue-filter label { display: inline-flex; align-items: center; gap: 0.35rem; }
     tr[data-venue].venue-hidden { display: none; }
+    .stats-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+    .stat-tile { border: 1px solid #ddd; border-radius: 6px; padding: 0.6rem 1rem; min-width: 160px; background: #fafafa; }
+    .stat-label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+    .stat-value { font-size: 0.95rem; margin-top: 0.15rem; }
+    .stat-caption { font-size: 0.78rem; color: #6b7280; margin-top: 0.2rem; }
+    .stat-tile-warning { border-color: #b45309; background: #fff7e6; }
+    .stat-tile-warning .stat-value { color: #b45309; }
+    h1 { margin: 0 0 0.3rem; }
+    .report-metadata { color: #6b7280; font-size: 0.85rem; margin: 0 0 0.2rem; }
   </style>
 </head>
 <body>
@@ -62,18 +71,8 @@
   {% endmacro %}
 
   <h1>Shaw IMAX Availability Report</h1>
-  <p>Generated: {{ generated_at_display }} (<span id="generated-ago" data-generated-at-ms="{{ generated_at_epoch_ms }}">just now</span>)</p>
-  <p>Updated every 30 minutes, 7:00am&ndash;11:00pm SGT; every 2 hours overnight.</p>
-
-  <p>
-    Scan window:
-    {{ report.dates_scanned[0] if report.dates_scanned else "n/a" }}
-    to
-    {{ report.dates_scanned[-1] if report.dates_scanned else "n/a" }}
-    ({{ report.dates_scanned|length }} day(s) scanned, stopped: {{ report.stop_reason }})<br>
-    Total showtimes collected: {{ report.total_shows }}<br>
-    Failed API calls: {{ report.failed_calls|length }}
-  </p>
+  <p class="report-metadata">Updated every 30 minutes, 7:00am&ndash;11:00pm SGT; every 2 hours overnight.</p>
+  <p class="report-metadata">Generated: {{ generated_at_display }} (<span id="generated-ago" data-generated-at-ms="{{ generated_at_epoch_ms }}">just now</span>)</p>
 
   {% if report.venues %}
   <div id="venue-filter">
@@ -111,6 +110,26 @@
   {% else %}
     <p>No shows scanned.</p>
   {% endif %}
+
+  <div class="stats-row">
+    <div class="stat-tile">
+      <div class="stat-label">Scan window</div>
+      <div class="stat-value">
+        {% if report.dates_scanned %}{{ short_date(report.dates_scanned[0]) }} &ndash; {{ short_date(report.dates_scanned[-1]) }}{% else %}n/a{% endif %}
+      </div>
+      <div class="stat-caption">{{ report.dates_scanned|length }} day(s) &middot; {{ report.stop_reason }}</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-label">Showtimes collected</div>
+      <div class="stat-value">{{ report.total_shows }}</div>
+    </div>
+    {% if report.failed_calls %}
+    <div class="stat-tile stat-tile-warning">
+      <div class="stat-label">Failed API calls</div>
+      <div class="stat-value">&#9888; {{ report.failed_calls|length }}</div>
+    </div>
+    {% endif %}
+  </div>
 
   {% if report.failed_calls %}
   <h2>Failed calls ({{ report.failed_calls|length }})</h2>

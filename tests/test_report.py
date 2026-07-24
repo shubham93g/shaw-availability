@@ -16,7 +16,7 @@ class RenderReportTextGeneratedAtTest(unittest.TestCase):
         report = ReportData(
             generated_at=1784741754,
             dates_scanned=[],
-            stop_reason="reached_max_days",
+            stop_reason="reached scan limit",
             total_shows=0,
         )
 
@@ -31,7 +31,7 @@ class RenderReportHtmlGeneratedAtTest(unittest.TestCase):
         report = ReportData(
             generated_at=1784741754,
             dates_scanned=[],
-            stop_reason="reached_max_days",
+            stop_reason="reached scan limit",
             total_shows=0,
         )
 

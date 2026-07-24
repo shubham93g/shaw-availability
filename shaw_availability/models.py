@@ -70,7 +70,7 @@ class ScanResult:
     scan_started_at: int
     scan_ended_at: int
     dates_scanned: list[str]
-    stop_reason: str  # "reached_max_days" | "empty_date_hit"
+    stop_reason: str  # "reached scan limit" | "no shows found"
     shows: list[ShowStats] = field(default_factory=list)
     day_aggregates: list[DayAggregate] = field(default_factory=list)
     failed_calls: list[FailedCall] = field(default_factory=list)

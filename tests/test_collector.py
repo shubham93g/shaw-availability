@@ -52,7 +52,7 @@ class RunScanEarlyStopTest(unittest.TestCase):
             result.dates_scanned,
             [today.isoformat(), tomorrow.isoformat(), day_after.isoformat()],
         )
-        self.assertEqual(result.stop_reason, "empty_date_hit")
+        self.assertEqual(result.stop_reason, "no shows found")
         self.assertEqual(len(result.shows), 1)
         self.assertEqual(result.shows[0].performance_id, 999)
         self.assertEqual(result.shows[0].display_date, tomorrow.isoformat())
@@ -96,14 +96,14 @@ class RunScanEarlyStopTest(unittest.TestCase):
         self, mock_get_show_times, mock_get_layouts
     ):
         # Every day is empty (including today), but max_days=1 means there's
-        # no day 1 to check — must not report "empty_date_hit" purely off
+        # no day 1 to check — must not report "no shows found" purely off
         # today's zero count.
         mock_get_show_times.return_value = []
         mock_get_layouts.return_value = []
 
         result = collector.run_scan(session=MagicMock(), start_date=date(2026, 7, 21), max_days=1)
 
-        self.assertEqual(result.stop_reason, "reached_max_days")
+        self.assertEqual(result.stop_reason, "reached scan limit")
         self.assertEqual(result.dates_scanned, ["2026-07-21"])
 
 

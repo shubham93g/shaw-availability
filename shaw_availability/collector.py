@@ -135,7 +135,7 @@ def run_scan(
     failed_calls: list[FailedCall] = []
     dates_scanned: list[str] = []
     shows: list[ShowStats] = []
-    stop_reason = "reached_max_days"
+    stop_reason = "reached scan limit"
 
     logger.debug("Starting scan: %d day(s) from %s", max_days, start_date.strftime(config.DATE_FORMAT))
 
@@ -152,7 +152,7 @@ def run_scan(
         # treated as "reached the edge of the schedule" — only offset >= 1 can.
         if offset > 0 and fetch.call_succeeded and not fetch.shows:
             logger.debug("%s: no showtimes found — stopping scan", day_str)
-            stop_reason = "empty_date_hit"
+            stop_reason = "no shows found"
             break
 
         if not fetch.call_succeeded:

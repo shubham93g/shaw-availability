@@ -21,7 +21,7 @@ class SaveLoadScanResultRoundTripTest(unittest.TestCase):
             scan_started_at=1784995554,
             scan_ended_at=1784995567,
             dates_scanned=["2026-07-23"],
-            stop_reason="reached_max_days",
+            stop_reason="reached scan limit",
             shows=[
                 ShowStats(
                     performance_id=513005,
