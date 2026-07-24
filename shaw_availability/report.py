@@ -31,6 +31,10 @@ def _time_sort_key(time_str: str) -> time:
     return datetime.strptime(time_str, "%I:%M %p").time()
 
 
+def _format_sgt_timestamp(epoch_seconds: int) -> str:
+    return datetime.fromtimestamp(epoch_seconds, tz=config.SGT).strftime("%Y-%m-%d %H:%M %Z")
+
+
 def _status_label(code: str) -> str:
     return config.SHOW_STATUS_LABELS.get(code, code)
 
@@ -64,7 +68,7 @@ class DaySection:
 
 @dataclass
 class ReportData:
-    generated_at: str
+    generated_at: int
     dates_scanned: list[str]
     stop_reason: str
     total_shows: int
@@ -131,7 +135,7 @@ def render_report_text(report: ReportData) -> str:
     lines: list[str] = []
     lines.append("=" * 70)
     lines.append("Shaw IMAX Availability Report")
-    lines.append(f"Generated: {report.generated_at}")
+    lines.append(f"Generated: {_format_sgt_timestamp(report.generated_at)}")
     lines.append("=" * 70)
     lines.append(
         f"Scan window: {report.dates_scanned[0] if report.dates_scanned else 'n/a'} "
@@ -163,12 +167,9 @@ def render_report_text(report: ReportData) -> str:
 
 
 def render_report_html(report: ReportData) -> str:
-    # fromisoformat parses "+08:00" into its own generic offset tzinfo, which
-    # doesn't carry config.SGT's "SGT" name — astimezone swaps in our named
-    # tzinfo (same offset) so strftime("%Z") below prints "SGT" not "UTC+08:00".
-    generated_at = datetime.fromisoformat(report.generated_at).astimezone(config.SGT)
     template = _jinja_env.get_template("index.html.j2")
     return template.render(
         report=report,
-        generated_at_display=generated_at.strftime("%Y-%m-%d %H:%M %Z"),
+        generated_at_display=_format_sgt_timestamp(report.generated_at),
+        generated_at_epoch_ms=report.generated_at * 1000,
     )

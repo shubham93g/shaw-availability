@@ -62,7 +62,7 @@
   {% endmacro %}
 
   <h1>Shaw IMAX Availability Report</h1>
-  <p>Generated: {{ generated_at_display }}</p>
+  <p>Generated: {{ generated_at_display }} (<span id="generated-ago" data-generated-at-ms="{{ generated_at_epoch_ms }}">just now</span>)</p>
   <p>Updated every 30 minutes, 7:00am&ndash;11:00pm SGT; every 2 hours overnight.</p>
 
   <p>
@@ -120,6 +120,31 @@
     {% endfor %}
   </ul>
   {% endif %}
+
+  <script>
+    var GENERATED_AGO_REFRESH_MS = 60000;
+
+    function relativeAgoLabel(sinceMs) {
+      var seconds = Math.max(0, Math.floor(sinceMs / 1000));
+      if (seconds < 60) return "just now";
+      var minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + " min" + (minutes !== 1 ? "s" : "") + " ago";
+      var hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + " hour" + (hours !== 1 ? "s" : "") + " ago";
+      var days = Math.floor(hours / 24);
+      return days + " day" + (days !== 1 ? "s" : "") + " ago";
+    }
+
+    function updateGeneratedAgo() {
+      var el = document.getElementById("generated-ago");
+      if (!el) return;
+      var generatedAtMs = Number(el.getAttribute("data-generated-at-ms"));
+      el.textContent = relativeAgoLabel(Date.now() - generatedAtMs);
+    }
+
+    updateGeneratedAgo();
+    setInterval(updateGeneratedAgo, GENERATED_AGO_REFRESH_MS);
+  </script>
 
   <script>
     document.body.addEventListener("click", function (event) {

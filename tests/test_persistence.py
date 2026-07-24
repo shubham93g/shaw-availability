@@ -18,8 +18,8 @@ class SaveLoadScanResultRoundTripTest(unittest.TestCase):
 
     def test_load_reconstructs_saved_scan_result(self):
         original = ScanResult(
-            scan_started_at="2026-07-23T01:35:54.027880+08:00",
-            scan_ended_at="2026-07-23T01:36:07.039173+08:00",
+            scan_started_at=1784995554,
+            scan_ended_at=1784995567,
             dates_scanned=["2026-07-23"],
             stop_reason="reached_max_days",
             shows=[
@@ -60,7 +60,7 @@ class SaveLoadScanResultRoundTripTest(unittest.TestCase):
                     kind="layouts",
                     identifier="123",
                     error="timeout",
-                    timestamp="2026-07-23T01:36:00+08:00",
+                    timestamp=1784995560,
                 )
             ],
         )

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 import requests
 
@@ -97,7 +98,7 @@ def collect_day(
                 kind="show_times",
                 identifier=day_str,
                 error=str(exc),
-                timestamp=_now_iso(),
+                timestamp=_now_timestamp(),
             )
         )
         return DayFetchResult(shows=[], call_succeeded=False)
@@ -116,7 +117,7 @@ def collect_show_stats(
                 kind="layouts",
                 identifier=str(show.performance_id),
                 error=str(exc),
-                timestamp=_now_iso(),
+                timestamp=_now_timestamp(),
             )
         )
         return None
@@ -130,7 +131,7 @@ def run_scan(
     start_date: date,
     max_days: int = config.SCAN_DAYS_DEFAULT,
 ) -> ScanResult:
-    scan_started_at = _now_iso()
+    scan_started_at = _now_timestamp()
     failed_calls: list[FailedCall] = []
     dates_scanned: list[str] = []
     shows: list[ShowStats] = []
@@ -189,7 +190,7 @@ def run_scan(
 
     return ScanResult(
         scan_started_at=scan_started_at,
-        scan_ended_at=_now_iso(),
+        scan_ended_at=_now_timestamp(),
         dates_scanned=dates_scanned,
         stop_reason=stop_reason,
         shows=shows,
@@ -198,5 +199,5 @@ def run_scan(
     )
 
 
-def _now_iso() -> str:
-    return datetime.now(config.SGT).isoformat()
+def _now_timestamp() -> int:
+    return int(time.time())

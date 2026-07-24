@@ -62,13 +62,13 @@ class FailedCall:
     kind: str  # "show_times" | "layouts"
     identifier: str
     error: str
-    timestamp: str
+    timestamp: int
 
 
 @dataclass
 class ScanResult:
-    scan_started_at: str
-    scan_ended_at: str
+    scan_started_at: int
+    scan_ended_at: int
     dates_scanned: list[str]
     stop_reason: str  # "reached_max_days" | "empty_date_hit"
     shows: list[ShowStats] = field(default_factory=list)
