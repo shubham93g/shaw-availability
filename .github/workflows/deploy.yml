@@ -1,4 +1,4 @@
-name: Deploy Shaw IMAX Availability Report
+name: Deploy
 
 on:
   workflow_dispatch: {}

@@ -1,10 +1,10 @@
-name: Shaw IMAX Availability Scan
+name: Scan
 
 on:
   workflow_dispatch:
     inputs:
-      deploy:
-        description: "Trigger the deploy workflow after a successful scan"
+      generate_report:
+        description: "Trigger the report workflow (which then deploys) after a successful scan"
         type: boolean
         default: true
 
@@ -35,32 +35,25 @@ jobs:
       - name: Run scan
         run: python main.py scan --verbose
 
-      - name: Generate report
-        run: |
-          {
-            echo '```'
-            python main.py report
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
       - name: Publish scan output to the "latest" release
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           if gh release view latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload latest artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload latest artifacts/scan_result.json --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create latest artifacts/* \
+            gh release create latest artifacts/scan_result.json \
               --repo "$GITHUB_REPOSITORY" \
               --title "Latest scan" \
               --notes "Automated scan output, overwritten every run. Not a software release."
           fi
 
-      # success() is explicit here, not implicit: adding the inputs.deploy
-      # check to `if` drops GitHub Actions' default "only run if everything
-      # before this succeeded" behavior, so it has to be written back in.
-      - name: Trigger deploy workflow
-        if: ${{ success() && inputs.deploy }}
+      # success() is explicit here, not implicit: adding the
+      # inputs.generate_report check to `if` drops GitHub Actions' default
+      # "only run if everything before this succeeded" behavior, so it has
+      # to be written back in.
+      - name: Trigger report workflow
+        if: ${{ success() && inputs.generate_report }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+        run: gh workflow run report.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"

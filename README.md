@@ -1,7 +1,8 @@
 # Shaw IMAX Seat-Availability Scanner
 
-[![Shaw IMAX Availability Scan](https://github.com/shubham93g/shaw-availability/actions/workflows/scan.yml/badge.svg?branch=main)](https://github.com/shubham93g/shaw-availability/actions/workflows/scan.yml)
-[![Deploy Shaw IMAX Availability Report](https://github.com/shubham93g/shaw-availability/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/shubham93g/shaw-availability/actions/workflows/deploy.yml)
+[![Scan](https://github.com/shubham93g/shaw-availability/actions/workflows/scan.yml/badge.svg?branch=main)](https://github.com/shubham93g/shaw-availability/actions/workflows/scan.yml)
+[![Report](https://github.com/shubham93g/shaw-availability/actions/workflows/report.yml/badge.svg?branch=main)](https://github.com/shubham93g/shaw-availability/actions/workflows/report.yml)
+[![Deploy](https://github.com/shubham93g/shaw-availability/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/shubham93g/shaw-availability/actions/workflows/deploy.yml)
 
 Scans Shaw Theatres' internal IMAX booking API to see how full upcoming
 IMAX showtimes are, across all venues, over the next two weeks.
@@ -103,37 +104,48 @@ Most Available ranking — is plain inline JavaScript with no build step.
 
 ## Scheduling
 
-Scanning and publishing are split across two workflows:
+Scanning, report generation, and publishing are split across three chained
+workflows:
 
 - **`.github/workflows/scan.yml`** first runs the test suite
   (`python -m unittest discover -s tests -v`) — a failing suite blocks the
   rest of the run, so a bad change is never scanned or deployed, though
   this only happens when scan.yml itself fires, not on every pull request.
-  It then runs `scan` then `report`, writing `scan_result.json` and
-  `index.html` to a local `artifacts/` folder, and publishes both as assets
-  on a single reused GitHub Release tagged `latest` (overwritten every run
-  — it's a snapshot, not a versioned release). It only reacts to
-  `workflow_dispatch` — it no longer self-schedules. Runs are triggered
-  externally — every 30 minutes from 7:00am to 11:00pm SGT, and every 2
-  hours overnight (11:00pm, 1:00am, 3:00am, 5:00am, 7:00am SGT) — by a
-  Cloudflare Worker on a Cron Trigger (see [Cron trigger](#cron-trigger-cloudflare-worker)
-  below) that calls GitHub's `workflow_dispatch` API. After publishing, it
-  dispatches `deploy.yml` itself (`gh workflow run deploy.yml`), unless run
-  with its `deploy` input set to `false`.
+  It then runs `scan`, writing `scan_result.json` to a local `artifacts/`
+  folder, and publishes it as an asset on a single reused GitHub Release
+  tagged `latest` (overwritten every run — it's a snapshot, not a versioned
+  release). It only reacts to `workflow_dispatch` — it no longer
+  self-schedules. Runs are triggered externally — every 30 minutes from
+  7:00am to 11:00pm SGT, and every 2 hours overnight (11:00pm, 1:00am,
+  3:00am, 5:00am, 7:00am SGT) — by a Cloudflare Worker on a Cron Trigger
+  (see [Cron trigger](#cron-trigger-cloudflare-worker) below) that calls
+  GitHub's `workflow_dispatch` API. After publishing, it dispatches
+  `report.yml` itself (`gh workflow run report.yml`), unless run with its
+  `generate_report` input set to `false`.
+- **`.github/workflows/report.yml`** also runs the test suite first, then
+  downloads `scan_result.json` from the `latest` release, runs `report` to
+  render `index.html` from it, and publishes `index.html` back to the same
+  `latest` release. This is the workflow to run manually after pushing a
+  change that only affects the report/template code (not the scan itself)
+  — it redeploys the latest data with the new rendering, without spending a
+  live API scan to do it. It reacts to `workflow_dispatch` — either the one
+  scan.yml fires automatically after a successful scan, or a manual run.
+  After publishing, it dispatches `deploy.yml` itself, unless run with its
+  own `deploy` input set to `false`.
 - **`.github/workflows/deploy.yml`** downloads just the `index.html` asset
-  from the `latest` release (`scan_result.json` is published to the release
-  but never deployed) and publishes it to Cloudflare Pages. It only reacts
-  to `workflow_dispatch` — either the one scan.yml fires automatically after
-  a successful scan, or a manual run to retry a failed deploy. It always
-  re-fetches whatever `index.html` is currently in the `latest` release, so
-  a retry needs no extra bookkeeping about which run it came from.
+  from the `latest` release and publishes it to Cloudflare Pages. It only
+  reacts to `workflow_dispatch` — either the one report.yml fires
+  automatically after generating a report, or a manual run to retry a
+  failed deploy. It always re-fetches whatever `index.html` is currently in
+  the `latest` release, so a retry needs no extra bookkeeping about which
+  run it came from.
 - **`.github/workflows/pages-redirect.yml`** is not part of this cadence at
   all. It publishes a static redirect page to GitHub Pages and is only run
   manually, once — see [Hosting](#hosting) below.
 
-None of scan.yml, deploy.yml, or the Cloudflare Worker send any kind of
-failure notification — a missed or failed run is only discoverable by
-checking the GitHub Actions or Cloudflare dashboards by hand.
+None of scan.yml, report.yml, deploy.yml, or the Cloudflare Worker send any
+kind of failure notification — a missed or failed run is only discoverable
+by checking the GitHub Actions or Cloudflare dashboards by hand.
 
 GitHub Actions' own `schedule: cron` was tried before the current Cloudflare
 Worker and dropped: schedules can drift, and are silently suspended after 60
