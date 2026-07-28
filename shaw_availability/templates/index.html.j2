@@ -303,7 +303,7 @@
       if (shareSeparator) shareSeparator.style.display = "";
       shareLink.addEventListener("click", function (event) {
         event.preventDefault();
-        navigator.share({ title: document.title, url: location.href });
+        navigator.share({ title: document.title, url: location.origin });
       });
     }
   </script>
