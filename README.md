@@ -176,6 +176,16 @@ graph, instead of three unrelated top-level runs:
   all. It publishes a static redirect page to GitHub Pages and is only run
   manually, once — see [Hosting](#hosting) below.
 
+Each of scan.yml, report.yml, and deploy.yml has its own `concurrency` group
+(`scan`, `report`, `deploy-cloudflare`) with `cancel-in-progress: true`, so a
+newer run cancels whatever's still running instead of queuing behind it —
+this matters most for scan.yml, since the Cloudflare Worker can dispatch a
+new run every 30 minutes even if a prior one is still going. `deploy.yml`'s
+`deploy-cloudflare` group is intentionally separate from
+`pages-redirect.yml`'s `deploy-github-pages` group: the two publish to
+different targets (Cloudflare Pages vs. GitHub Pages) and were never meant
+to block or cancel each other.
+
 None of scan.yml, report.yml, deploy.yml, or the Cloudflare Worker send any
 kind of failure notification — a missed or failed run is only discoverable
 by checking the GitHub Actions or Cloudflare dashboards by hand.

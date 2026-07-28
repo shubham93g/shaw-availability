@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: deploy-cloudflare
+  cancel-in-progress: true
 
 jobs:
   cloudflare:
