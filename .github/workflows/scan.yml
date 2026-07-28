@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: scan
@@ -49,12 +48,12 @@ jobs:
               --notes "Automated scan output, overwritten every run. Not a software release."
           fi
 
-      # success() is explicit here, not implicit: adding the
-      # inputs.generate_report check to `if` drops GitHub Actions' default
-      # "only run if everything before this succeeded" behavior, so it has
-      # to be written back in.
-      - name: Trigger report workflow
-        if: ${{ success() && inputs.generate_report }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: gh workflow run report.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+  # success() is explicit here, not implicit: adding the
+  # inputs.generate_report check to `if` drops GitHub Actions' default
+  # "only run if everything before this succeeded" behavior, so it has
+  # to be written back in.
+  report:
+    needs: scan
+    if: ${{ success() && inputs.generate_report }}
+    uses: ./.github/workflows/report.yml
+    secrets: inherit

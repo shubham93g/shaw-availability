@@ -7,10 +7,15 @@ on:
         description: "Trigger the deploy workflow after generating the report"
         type: boolean
         default: true
+  workflow_call:
+    inputs:
+      deploy:
+        description: "Trigger the deploy workflow after generating the report"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: report
@@ -51,11 +56,11 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: gh release upload latest artifacts/index.html --repo "$GITHUB_REPOSITORY" --clobber
 
-      # success() is explicit here, not implicit: adding the inputs.deploy
-      # check to `if` drops GitHub Actions' default "only run if everything
-      # before this succeeded" behavior, so it has to be written back in.
-      - name: Trigger deploy workflow
-        if: ${{ success() && inputs.deploy }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+  # success() is explicit here, not implicit: adding the inputs.deploy
+  # check to `if` drops GitHub Actions' default "only run if everything
+  # before this succeeded" behavior, so it has to be written back in.
+  deploy:
+    needs: report
+    if: ${{ success() && inputs.deploy }}
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

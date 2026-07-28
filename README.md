@@ -129,7 +129,10 @@ Most Available ranking — is plain inline JavaScript with no build step.
 ## Scheduling
 
 Scanning, report generation, and publishing are split across three chained
-workflows:
+workflows, wired together as reusable workflows (`workflow_call`) rather than
+`gh workflow run` dispatches — so triggering `scan.yml` produces a single run
+in the Actions tab with `report` and `deploy` nested underneath it in the job
+graph, instead of three unrelated top-level runs:
 
 - **`.github/workflows/scan.yml`** first runs the test suite
   (`python -m unittest discover -s tests -v`) — a failing suite blocks the
@@ -143,8 +146,8 @@ workflows:
   7:00am to 11:00pm SGT, and every 2 hours overnight (11:00pm, 1:00am,
   3:00am, 5:00am, 7:00am SGT) — by a Cloudflare Worker on a Cron Trigger
   (see [Cron trigger](#cron-trigger-cloudflare-worker) below) that calls
-  GitHub's `workflow_dispatch` API. After publishing, it dispatches
-  `report.yml` itself (`gh workflow run report.yml`), unless run with its
+  GitHub's `workflow_dispatch` API. After publishing, it calls `report.yml`
+  as a job (`uses: ./.github/workflows/report.yml`), unless run with its
   `generate_report` input set to `false`.
 - **`.github/workflows/report.yml`** also runs the test suite first, then
   downloads `scan_result.json` from the `latest` release, runs `report` to
@@ -152,17 +155,17 @@ workflows:
   `latest` release. This is the workflow to run manually after pushing a
   change that only affects the report/template code (not the scan itself)
   — it redeploys the latest data with the new rendering, without spending a
-  live API scan to do it. It reacts to `workflow_dispatch` — either the one
-  scan.yml fires automatically after a successful scan, or a manual run.
-  After publishing, it dispatches `deploy.yml` itself, unless run with its
-  own `deploy` input set to `false`.
+  live API scan to do it. It reacts to both `workflow_dispatch` (a manual
+  run) and `workflow_call` (called by scan.yml after a successful scan).
+  After publishing, it calls `deploy.yml` as a job the same way, unless run
+  with its own `deploy` input set to `false`.
 - **`.github/workflows/deploy.yml`** downloads just the `index.html` asset
-  from the `latest` release and publishes it to Cloudflare Pages. It only
-  reacts to `workflow_dispatch` — either the one report.yml fires
-  automatically after generating a report, or a manual run to retry a
-  failed deploy. It always re-fetches whatever `index.html` is currently in
-  the `latest` release, so a retry needs no extra bookkeeping about which
-  run it came from.
+  from the `latest` release and publishes it to Cloudflare Pages. It reacts
+  to both `workflow_dispatch` (a manual run to retry a failed deploy) and
+  `workflow_call` (called by report.yml after generating a report). It
+  always re-fetches whatever `index.html` is currently in the `latest`
+  release, so a retry needs no extra bookkeeping about which run it came
+  from.
 - **`.github/workflows/pages-redirect.yml`** is not part of this cadence at
   all. It publishes a static redirect page to GitHub Pages and is only run
   manually, once — see [Hosting](#hosting) below.
