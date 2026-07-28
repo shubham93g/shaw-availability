@@ -125,13 +125,13 @@ class CatmullRomPathTest(unittest.TestCase):
 
 class TrendSparklineSvgTest(unittest.TestCase):
     def test_returns_nothing_for_fewer_than_two_snapshots(self):
-        self.assertEqual(_trend_sparkline_svg(None, "Test Movie", "Lido IMAX", "9:15 AM"), "")
+        self.assertEqual(_trend_sparkline_svg(None, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM"), "")
 
         one_snapshot = PerformanceHistory(
             performance_id=1,
             snapshots=[HistorySnapshot(scan_ended_at=1784995000, availability_pct=50.0)],
         )
-        markup = _trend_sparkline_svg(one_snapshot, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(one_snapshot, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
         self.assertEqual(markup, "")
 
     def test_renders_smooth_path_with_one_segment_between_consecutive_points(self):
@@ -144,7 +144,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
         self.assertIn("<path", markup)
         path_d = re.search(r'<path d="([^"]+)"', markup).group(1)
@@ -162,7 +162,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
         # The dot markers sit exactly at each (clamped) data point regardless
         # of how the connecting curve is drawn, so they're what to check here
@@ -187,7 +187,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
         xs = [float(x) for x in re.findall(r'<circle cx="([\d.]+)"', markup)]
         self.assertEqual(len(xs), 3)
@@ -207,7 +207,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
         self.assertEqual(markup.count("<circle"), 3)
 
@@ -220,7 +220,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
         self.assertEqual(markup.count("<line"), 2)
         self.assertIn(">0%</text>", markup)
@@ -236,7 +236,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
         self.assertIn('<details class="trend-toggle">', markup)
 
@@ -249,9 +249,11 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
-        self.assertIn('<div class="trend-popup-header">Test Movie · Lido IMAX · 9:15 AM</div>', markup)
+        self.assertIn(
+            '<div class="trend-popup-header">Test Movie · Lido IMAX · Sat, 25 Jul, 9:15 AM</div>', markup
+        )
 
     def test_exposes_per_point_data_for_client_side_hover(self):
         perf_history = PerformanceHistory(
@@ -263,7 +265,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
         match = re.search(r'data-points="([^"]*)"', markup)
         self.assertIsNotNone(match)
@@ -289,7 +291,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "2026-07-25", "9:15 AM")
 
         # Rendered server-side (not created lazily by JS like the crosshair
         # and hover dot) so it's plain content in normal document flow —

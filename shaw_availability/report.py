@@ -133,7 +133,11 @@ def _catmull_rom_path(points: list[tuple[float, float]]) -> str:
 
 
 def _trend_sparkline_svg(
-    perf_history: PerformanceHistory | None, movie_title: str, venue_name: str, display_time: str
+    perf_history: PerformanceHistory | None,
+    movie_title: str,
+    venue_name: str,
+    display_date: str,
+    display_time: str,
 ) -> Markup:
     snapshots = perf_history.snapshots if perf_history else []
     if len(snapshots) < 2:
@@ -225,7 +229,7 @@ def _trend_sparkline_svg(
         fill = accent_color if is_latest else line_color
         dot_parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius}" fill="{fill}" />')
 
-    header = f"{movie_title} · {venue_name} · {display_time}"
+    header = f"{movie_title} · {venue_name} · {_short_date_label(display_date)}, {display_time}"
 
     return Markup(
         '<details class="trend-toggle">'

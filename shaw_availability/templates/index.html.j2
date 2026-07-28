@@ -189,7 +189,7 @@
     {{ cell(show.movie_title) }}
     {{ cell(show.venue_name) }}
     {{ cell(show.display_time, "cell-time") }}
-    {% set availability_cell %}<div class="availability-inner"><span class="availability-value">{{ "%.1f%%"|format(show.availability_pct) }}</span>{{ trend_sparkline(report.history_by_performance_id.get(show.performance_id), show.movie_title, show.venue_name, show.display_time) }}</div>{% endset %}
+    {% set availability_cell %}<div class="availability-inner"><span class="availability-value">{{ "%.1f%%"|format(show.availability_pct) }}</span>{{ trend_sparkline(report.history_by_performance_id.get(show.performance_id), show.movie_title, show.venue_name, show.display_date, show.display_time) }}</div>{% endset %}
     {{ cell(availability_cell, "cell-availability", availability_style(show.availability_pct)) }}
     {{ cell(show.available ~ "/" ~ show.total_seats) }}
     {{ cell(status_label(show.api_seating_status)) }}
