@@ -85,6 +85,7 @@
 
   <h1>Shaw IMAX Availability Report</h1>
   <p class="report-metadata">Updated every 30 minutes, 7:00am&ndash;11:00pm SGT; every 2 hours overnight.</p>
+  <p class="report-metadata"><a href="mailto:ring-mohair.0k@icloud.com">Contact</a> <span id="share-separator" style="display:none;">|</span> <a href="#" id="share-page" style="display:none;">Share</a></p>
   <p class="report-metadata">Generated: {{ generated_at_display }} (<span id="generated-ago" data-generated-at-ms="{{ generated_at_epoch_ms }}">just now</span>)</p>
 
   {% if report.venues %}
@@ -291,6 +292,19 @@
       });
 
       applyFilter();
+    }
+  </script>
+
+  <script>
+    var shareLink = document.getElementById("share-page");
+    var shareSeparator = document.getElementById("share-separator");
+    if (shareLink && navigator.share) {
+      shareLink.style.display = "";
+      if (shareSeparator) shareSeparator.style.display = "";
+      shareLink.addEventListener("click", function (event) {
+        event.preventDefault();
+        navigator.share({ title: document.title, url: location.href });
+      });
     }
   </script>
 </body>
