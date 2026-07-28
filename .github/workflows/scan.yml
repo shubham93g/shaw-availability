@@ -48,12 +48,8 @@ jobs:
               --notes "Automated scan output, overwritten every run. Not a software release."
           fi
 
-  # success() is explicit here, not implicit: adding the
-  # inputs.generate_report check to `if` drops GitHub Actions' default
-  # "only run if everything before this succeeded" behavior, so it has
-  # to be written back in.
   report:
     needs: scan
-    if: ${{ success() && inputs.generate_report }}
+    if: ${{ inputs.generate_report }}
     uses: ./.github/workflows/report.yml
     secrets: inherit

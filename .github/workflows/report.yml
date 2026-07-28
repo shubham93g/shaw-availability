@@ -56,11 +56,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: gh release upload latest artifacts/index.html --repo "$GITHUB_REPOSITORY" --clobber
 
-  # success() is explicit here, not implicit: adding the inputs.deploy
-  # check to `if` drops GitHub Actions' default "only run if everything
-  # before this succeeded" behavior, so it has to be written back in.
   deploy:
     needs: generate
-    if: ${{ success() && inputs.deploy }}
+    if: ${{ inputs.deploy }}
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
