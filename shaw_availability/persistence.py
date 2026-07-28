@@ -5,7 +5,15 @@ import json
 from pathlib import Path
 
 from . import config
-from .models import DayAggregate, FailedCall, ScanResult, ShowStats
+from .models import (
+    DayAggregate,
+    FailedCall,
+    History,
+    HistorySnapshot,
+    PerformanceHistory,
+    ScanResult,
+    ShowStats,
+)
 
 
 def _artifact_path(filename: str) -> Path:
@@ -31,6 +39,31 @@ def load_scan_result_json() -> ScanResult:
         shows=[ShowStats(**s) for s in data["shows"]],
         day_aggregates=[DayAggregate(**d) for d in data["day_aggregates"]],
         failed_calls=[FailedCall(**f) for f in data["failed_calls"]],
+    )
+
+
+def save_history_json(history: History) -> Path:
+    path = _artifact_path(config.HISTORY_FILENAME)
+    with path.open("w") as f:
+        json.dump(dataclasses.asdict(history), f, indent=2)
+    return path
+
+
+def load_history_json() -> History:
+    path = _artifact_path(config.HISTORY_FILENAME)
+    # Unlike load_scan_result_json, a missing file is expected here: the
+    # very first scan ever run has no prior history.json to merge into.
+    if not path.exists():
+        return History()
+    data = json.loads(path.read_text())
+    return History(
+        performances=[
+            PerformanceHistory(
+                performance_id=p["performance_id"],
+                snapshots=[HistorySnapshot(**s) for s in p["snapshots"]],
+            )
+            for p in data["performances"]
+        ]
     )
 
 

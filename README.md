@@ -102,9 +102,17 @@ literal zero availability.
 
 ## Output
 
-`scan` writes `scan_result.json`; `report` reads it and writes `index.html`
-(rendered from a Jinja2 template). Both land in `artifacts/` (gitignored),
-overwriting the previous run's output.
+`scan` writes `scan_result.json`, then merges the current availability of
+every show it just scanned into `history.json` — an append-only, per-show
+time series (`performance_id` → `[(timestamp, availability_pct), ...]`)
+used to render the report's per-show trend chart. A show drops out of
+`history.json` once it's no longer in `scan_result.json` (screened, or
+scrolled past the scan window), unless the scan that would've dropped it
+also had failed API calls, in which case it's kept rather than risk
+mistaking a transient fetch failure for the show genuinely expiring.
+`report` reads both files and writes `index.html` (rendered from a Jinja2
+template). All three land in `artifacts/` (gitignored); `scan_result.json`
+and `index.html` are overwritten every run, `history.json` accumulates.
 
 ## Report page
 
@@ -126,6 +134,16 @@ Each day section's show count and average availability are recomputed the
 same way. All of this — the venue filter, the row highlight, and the
 Most Available ranking — is plain inline JavaScript with no build step.
 
+Each row also has a "Trend" toggle — collapsed by default — that opens a
+small chart of that show's availability over time, built from
+`history.json`. It has too few points to plot yet on a show's first
+appearance in a scan. The chart is a server-rendered SVG (a smoothed curve
+through up to 20 points, evenly sampled across the show's whole tracked
+history rather than just its most recent snapshots, so a long-running show
+isn't reduced to a flat line covering only the last few hours); the popup
+itself is positioned by a small amount of JavaScript and closes on any
+scroll, resize, or outside click.
+
 ## Scheduling
 
 Scanning, report generation, and publishing are split across three chained
@@ -138,10 +156,14 @@ graph, instead of three unrelated top-level runs:
   (`python -m unittest discover -s tests -v`) — a failing suite blocks the
   rest of the run, so a bad change is never scanned or deployed, though
   this only happens when scan.yml itself fires, not on every pull request.
-  It then runs `scan`, writing `scan_result.json` to a local `artifacts/`
-  folder, and publishes it as an asset on a single reused GitHub Release
-  tagged `latest` (overwritten every run — it's a snapshot, not a versioned
-  release). It only reacts to `workflow_dispatch` — it no longer
+  It first downloads whatever `history.json` is already on the `latest`
+  release (tolerating there being none yet, e.g. the very first run), then
+  runs `scan` — which writes `scan_result.json` and the merged
+  `history.json` to a local `artifacts/` folder — and publishes both as
+  assets on a single reused GitHub Release tagged `latest` (overwritten
+  every run for `scan_result.json`; `history.json`'s own overwrite is what
+  persists its accumulated merge across runs, since nothing else about this
+  release is versioned). It only reacts to `workflow_dispatch` — it no longer
   self-schedules. Runs are triggered externally — every 30 minutes from
   7:00am to 11:00pm SGT, and every 2 hours overnight (11:00pm, 1:00am,
   3:00am, 5:00am, 7:00am SGT) — by a Cloudflare Worker on a Cron Trigger
@@ -155,10 +177,11 @@ graph, instead of three unrelated top-level runs:
 - **`.github/workflows/report.yml`** also runs the test suite first — unless
   it was called from `scan.yml`, which passes `skip_tests: true` since it
   already ran the same suite against the same commit moments earlier; a
-  direct manual dispatch always runs them — then downloads
-  `scan_result.json` from the `latest` release, runs `report` to render
-  `index.html` from it, and publishes `index.html` back to the same
-  `latest` release. This is the workflow to run manually after pushing a
+  direct manual dispatch always runs them — then downloads both
+  `scan_result.json` and `history.json` from the `latest` release, runs
+  `report` to render `index.html` from them, and publishes `index.html`
+  back to the same `latest` release. This is the workflow to run manually
+  after pushing a
   change that only affects the report/template code (not the scan itself)
   — it redeploys the latest data with the new rendering, without spending a
   live API scan to do it. It reacts to both `workflow_dispatch` (a manual

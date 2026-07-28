@@ -48,6 +48,11 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: gh release download latest --repo "$GITHUB_REPOSITORY" --pattern "scan_result.json" --dir artifacts --clobber
 
+      - name: Download latest history
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gh release download latest --repo "$GITHUB_REPOSITORY" --pattern "history.json" --dir artifacts --clobber
+
       - name: Generate report
         run: |
           {

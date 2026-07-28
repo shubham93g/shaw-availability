@@ -23,6 +23,36 @@
       text-decoration: none;
     }
     td.cell-book a:hover { background: #1d4ed8; }
+    td.cell-trend { text-align: center; padding: 0.2rem 0.4rem; }
+    .trend-toggle { display: inline-block; }
+    .trend-toggle summary {
+      cursor: pointer;
+      list-style: none;
+      font-size: 0.78rem;
+      color: #2563eb;
+    }
+    .trend-toggle summary::-webkit-details-marker { display: none; }
+    .trend-popup {
+      /* Moved to a direct child of <body> and placed by JS (see the
+         trend-toggle script below) when opened, with position: absolute
+         relative to the document — a table-scroll ancestor with
+         overflow-x: auto implicitly clips overflow-y too (per the CSS
+         overflow spec), so a popup this size can't be positioned relative
+         to its row without being cut off for rows near a section's bottom.
+         Positioned once at open time and closed on any scroll (see the
+         trend-toggle script) rather than tracked continuously — simpler
+         than reconciling page scroll against a nested container's own
+         scroll (e.g. .table-scroll's horizontal pan on narrow viewports). */
+      position: absolute;
+      z-index: 1000;
+      padding: 0.4rem 0.5rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    .trend-sparkline { display: block; }
+    .trend-empty { color: #9ca3af; }
     tbody tr.row-clicked { background: #fff7e6; }
     tbody tr.row-clicked:hover { background: #fdecc8; }
     tbody tr.row-clicked td:first-child {
@@ -66,7 +96,7 @@
   <thead>
     <tr>
       {% if show_date %}<th>Date</th>{% endif %}<th>Movie</th><th>Venue</th><th>Time</th><th>Availability</th>
-      <th>Seats</th><th>Status</th><th>Best Seats</th><th>Book</th>
+      <th>Trend</th><th>Seats</th><th>Status</th><th>Best Seats</th><th>Book</th>
     </tr>
   </thead>
   {% endmacro %}
@@ -77,6 +107,7 @@
     {{ cell(show.venue_name) }}
     {{ cell(show.display_time, "cell-time") }}
     {{ cell("%.1f%%"|format(show.availability_pct), style=availability_style(show.availability_pct)) }}
+    {{ cell(trend_sparkline(report.history_by_performance_id.get(show.performance_id)), "cell-trend") }}
     {{ cell(show.available ~ "/" ~ show.total_seats) }}
     {{ cell(status_label(show.api_seating_status)) }}
     {{ cell(show.best_seats_available|join(", ") if show.best_seats_available else "-") }}
@@ -204,6 +235,102 @@
   </script>
 
   <script>
+    // Popups are detached to a direct child of <body> while open (see the
+    // .trend-popup CSS comment for why) and moved back into their owning
+    // <details> on close, so a row's markup is always complete again by the
+    // time rebuildMostAvailable() might clone it. Positioning happens once,
+    // synchronously, at open time (closeAllTrendPopups below closes rather
+    // than re-tracks on scroll) — so there's no async gap where an
+    // unpositioned popup could flash in the wrong place before a listener
+    // catches up.
+    function closeTrendPopup(details) {
+      details.open = false;
+      var popup = details._openPopup;
+      if (popup) {
+        details.appendChild(popup);
+        details._openPopup = null;
+      }
+    }
+
+    function openTrendPopup(details) {
+      document.querySelectorAll("details.trend-toggle[open]").forEach(function (other) {
+        if (other !== details) closeTrendPopup(other);
+      });
+
+      var popup = details.querySelector(".trend-popup");
+      var summary = details.querySelector("summary");
+      if (!popup || !summary) return;
+
+      details.open = true;
+
+      var rect = summary.getBoundingClientRect();
+      document.body.appendChild(popup);
+      details._openPopup = popup;
+
+      var margin = 8;
+      var left = rect.left + window.scrollX + rect.width / 2 - popup.offsetWidth / 2;
+      left = Math.max(
+        window.scrollX + margin,
+        Math.min(left, window.scrollX + window.innerWidth - popup.offsetWidth - margin)
+      );
+      var top = rect.bottom + window.scrollY + 4;
+      if (rect.bottom + popup.offsetHeight + 4 > window.innerHeight - margin) {
+        top = rect.top + window.scrollY - popup.offsetHeight - 4;
+        // On a viewport short enough that even flipping above the anchor
+        // doesn't fully fit, don't let it go further than the top margin —
+        // better to overlap the anchor slightly than render off-screen
+        // above the current scroll position with no visible way to it.
+        top = Math.max(window.scrollY + margin, top);
+      }
+      popup.style.left = left + "px";
+      popup.style.top = top + "px";
+    }
+
+    document.body.addEventListener("click", function (event) {
+      var summary = event.target.closest(".trend-toggle > summary");
+      if (summary) {
+        // Handle the toggle ourselves (open/close, positioning) rather than
+        // letting <details> do it natively: the native path fires an async
+        // "toggle" event, leaving a window where the browser can paint the
+        // just-opened popup at its unset default position before a listener
+        // repositions it — visible as a flash in the wrong place.
+        event.preventDefault();
+        var details = summary.parentElement;
+        if (details.open) {
+          closeTrendPopup(details);
+        } else {
+          openTrendPopup(details);
+        }
+        return;
+      }
+
+      document.querySelectorAll("details.trend-toggle[open]").forEach(function (details) {
+        var popup = details._openPopup;
+        var insideTrigger = details.contains(event.target);
+        var insidePopup = popup && popup.contains(event.target);
+        if (!insideTrigger && !insidePopup) closeTrendPopup(details);
+      });
+    });
+
+    function closeAllTrendPopups() {
+      document.querySelectorAll("details.trend-toggle[open]").forEach(closeTrendPopup);
+    }
+
+    // Closing on any scroll — page scroll or a nested container's own
+    // scroll, like .table-scroll's horizontal pan on narrow viewports —
+    // keeps behavior consistent regardless of scroll source, rather than
+    // tracking one axis and closing on the other. capture: true is what
+    // catches .table-scroll's scroll here: it doesn't bubble, but a
+    // capturing listener on window still sees it on the way down to target.
+    window.addEventListener("scroll", closeAllTrendPopups, { capture: true, passive: true });
+
+    // Repositioning an open popup on resize would need the same math as
+    // open-time placement; closing it instead (like many native popovers do
+    // on a layout change) is simpler and avoids a stale/misplaced popup.
+    window.addEventListener("resize", closeAllTrendPopups);
+  </script>
+
+  <script>
     var VENUE_FILTER_KEY = "shaw-venue-filter";
     var checkboxes = Array.prototype.slice.call(document.querySelectorAll(".venue-checkbox"));
 
@@ -216,6 +343,12 @@
       if (!section) return;
       var tbody = section.querySelector("tbody");
       if (!tbody) return;
+
+      // Close any open trend popup first: closeTrendPopup() moves the popup
+      // back inside its <details> before cloneNode below runs, so a row's
+      // clone always carries its full popup markup rather than an empty
+      // <details> whose popup is sitting detached under <body>.
+      document.querySelectorAll("details.trend-toggle[open]").forEach(closeTrendPopup);
 
       var n = parseInt(section.getAttribute("data-most-available-count"), 10);
       var candidates = Array.prototype.slice

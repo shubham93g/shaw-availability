@@ -74,3 +74,20 @@ class ScanResult:
     shows: list[ShowStats] = field(default_factory=list)
     day_aggregates: list[DayAggregate] = field(default_factory=list)
     failed_calls: list[FailedCall] = field(default_factory=list)
+
+
+@dataclass
+class HistorySnapshot:
+    scan_ended_at: int  # mirrors ScanResult.scan_ended_at for that run
+    availability_pct: float
+
+
+@dataclass
+class PerformanceHistory:
+    performance_id: int
+    snapshots: list[HistorySnapshot] = field(default_factory=list)
+
+
+@dataclass
+class History:
+    performances: list[PerformanceHistory] = field(default_factory=list)

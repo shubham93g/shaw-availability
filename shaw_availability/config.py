@@ -62,5 +62,17 @@ SHOW_STATUS_LABELS = {
 ARTIFACTS_DIR = Path("artifacts")
 SCAN_RESULT_FILENAME = "scan_result.json"
 REPORT_HTML_FILENAME = "index.html"
+HISTORY_FILENAME = "history.json"
+
+# Trend chart render sizing — caps how many points are plotted, evenly
+# downsampled across a performance's entire tracked history (not just its
+# most recent snapshots); storage in history.json itself stays uncapped.
+TREND_SPARKLINE_MAX_POINTS = 20
+TREND_CHART_WIDTH = 280
+TREND_CHART_HEIGHT = 150
+TREND_CHART_MARGIN_LEFT = 34
+TREND_CHART_MARGIN_RIGHT = 8
+TREND_CHART_MARGIN_TOP = 8
+TREND_CHART_MARGIN_BOTTOM = 20
 
 BOOKING_URL_TEMPLATE = "https://shaw.sg/showtimes/{performance_id}"

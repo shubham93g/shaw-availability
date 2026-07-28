@@ -5,7 +5,15 @@ import unittest
 from pathlib import Path
 
 from shaw_availability import config, persistence
-from shaw_availability.models import DayAggregate, FailedCall, ScanResult, ShowStats
+from shaw_availability.models import (
+    DayAggregate,
+    FailedCall,
+    History,
+    HistorySnapshot,
+    PerformanceHistory,
+    ScanResult,
+    ShowStats,
+)
 
 
 class SaveLoadScanResultRoundTripTest(unittest.TestCase):
@@ -69,6 +77,45 @@ class SaveLoadScanResultRoundTripTest(unittest.TestCase):
         loaded = persistence.load_scan_result_json()
 
         self.assertEqual(loaded, original)
+
+
+class SaveLoadHistoryJsonRoundTripTest(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        self._original_artifacts_dir = config.ARTIFACTS_DIR
+        config.ARTIFACTS_DIR = Path(self._tmpdir.name)
+        self.addCleanup(setattr, config, "ARTIFACTS_DIR", self._original_artifacts_dir)
+
+    def test_load_reconstructs_saved_history(self):
+        original = History(
+            performances=[
+                PerformanceHistory(
+                    performance_id=513005,
+                    snapshots=[
+                        HistorySnapshot(scan_ended_at=1784995567, availability_pct=32.68),
+                        HistorySnapshot(scan_ended_at=1784997367, availability_pct=28.1),
+                    ],
+                )
+            ]
+        )
+
+        persistence.save_history_json(original)
+        loaded = persistence.load_history_json()
+
+        self.assertEqual(loaded, original)
+
+
+class LoadHistoryJsonMissingFileTest(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        self._original_artifacts_dir = config.ARTIFACTS_DIR
+        config.ARTIFACTS_DIR = Path(self._tmpdir.name)
+        self.addCleanup(setattr, config, "ARTIFACTS_DIR", self._original_artifacts_dir)
+
+    def test_returns_empty_history_when_no_file_exists_yet(self):
+        self.assertEqual(persistence.load_history_json(), History())
 
 
 if __name__ == "__main__":
