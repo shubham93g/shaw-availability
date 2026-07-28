@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+import json
 import re
 import unittest
 
@@ -123,13 +125,13 @@ class CatmullRomPathTest(unittest.TestCase):
 
 class TrendSparklineSvgTest(unittest.TestCase):
     def test_returns_placeholder_for_fewer_than_two_snapshots(self):
-        self.assertIn("trend-empty", _trend_sparkline_svg(None))
+        self.assertIn("trend-empty", _trend_sparkline_svg(None, "Test Movie", "Lido IMAX", "9:15 AM"))
 
         one_snapshot = PerformanceHistory(
             performance_id=1,
             snapshots=[HistorySnapshot(scan_ended_at=1784995000, availability_pct=50.0)],
         )
-        markup = _trend_sparkline_svg(one_snapshot)
+        markup = _trend_sparkline_svg(one_snapshot, "Test Movie", "Lido IMAX", "9:15 AM")
         self.assertIn("trend-empty", markup)
         self.assertNotIn("<svg", markup)
 
@@ -143,7 +145,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history)
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
 
         self.assertIn("<path", markup)
         path_d = re.search(r'<path d="([^"]+)"', markup).group(1)
@@ -161,7 +163,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history)
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
 
         # The dot markers sit exactly at each (clamped) data point regardless
         # of how the connecting curve is drawn, so they're what to check here
@@ -176,6 +178,26 @@ class TrendSparklineSvgTest(unittest.TestCase):
             self.assertGreaterEqual(y, config.TREND_CHART_MARGIN_TOP)
             self.assertLessEqual(y, plot_bottom)
 
+    def test_places_dots_proportionally_to_elapsed_time_not_index(self):
+        perf_history = PerformanceHistory(
+            performance_id=1,
+            snapshots=[
+                HistorySnapshot(scan_ended_at=0, availability_pct=10.0),
+                HistorySnapshot(scan_ended_at=100, availability_pct=20.0),
+                HistorySnapshot(scan_ended_at=1000, availability_pct=30.0),
+            ],
+        )
+
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+
+        xs = [float(x) for x in re.findall(r'<circle cx="([\d.]+)"', markup)]
+        self.assertEqual(len(xs), 3)
+        gap1 = xs[1] - xs[0]
+        gap2 = xs[2] - xs[1]
+        # Elapsed time between points is 100s then 900s (a 1:9 ratio); an
+        # index-based layout would have made these two gaps equal instead.
+        self.assertAlmostEqual(gap2 / gap1, 900 / 100, places=1)
+
     def test_renders_one_dot_marker_per_snapshot(self):
         perf_history = PerformanceHistory(
             performance_id=1,
@@ -186,7 +208,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history)
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
 
         self.assertEqual(markup.count("<circle"), 3)
 
@@ -199,7 +221,7 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history)
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
 
         self.assertEqual(markup.count("<line"), 2)
         self.assertIn(">0%</text>", markup)
@@ -215,9 +237,45 @@ class TrendSparklineSvgTest(unittest.TestCase):
             ],
         )
 
-        markup = _trend_sparkline_svg(perf_history)
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
 
         self.assertIn('<details class="trend-toggle">', markup)
+
+    def test_includes_venue_and_show_time_in_a_popup_header(self):
+        perf_history = PerformanceHistory(
+            performance_id=1,
+            snapshots=[
+                HistorySnapshot(scan_ended_at=1784995000, availability_pct=50.0),
+                HistorySnapshot(scan_ended_at=1784995567, availability_pct=40.0),
+            ],
+        )
+
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+
+        self.assertIn('<div class="trend-popup-header">Test Movie · Lido IMAX · 9:15 AM</div>', markup)
+
+    def test_exposes_per_point_data_for_client_side_hover(self):
+        perf_history = PerformanceHistory(
+            performance_id=1,
+            snapshots=[
+                HistorySnapshot(scan_ended_at=1784995000, availability_pct=50.0),
+                HistorySnapshot(scan_ended_at=1784995567, availability_pct=40.0),
+                HistorySnapshot(scan_ended_at=1784996567, availability_pct=30.0),
+            ],
+        )
+
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+
+        match = re.search(r'data-points="([^"]*)"', markup)
+        self.assertIsNotNone(match)
+        # html.unescape mirrors what a browser does when parsing the
+        # attribute (report.py HTML-entity-escapes the JSON so it survives
+        # inside a double-quoted attribute).
+        payload = json.loads(html.unescape(match.group(1)))
+        self.assertEqual([p["pct"] for p in payload["points"]], [50.0, 40.0, 30.0])
+        self.assertIn("t", payload["points"][0])
+        self.assertIn("top", payload)
+        self.assertIn("bottom", payload)
 
 
 class BuildReportHistoryWiringTest(unittest.TestCase):

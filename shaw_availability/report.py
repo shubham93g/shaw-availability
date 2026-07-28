@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, time
 from pathlib import Path
@@ -89,12 +90,16 @@ def _axis_time_labels(
 def _catmull_rom_path(points: list[tuple[float, float]]) -> str:
     # A cubic-Bezier-per-segment Catmull-Rom spline: unlike a polyline, it
     # passes through every point with a continuous tangent instead of a
-    # sharp corner at each one. Boundary segments mirror the nearest
-    # interior point in place of an out-of-range neighbor (the standard
-    # Catmull-Rom edge case), and x is already evenly spaced (points are
-    # placed by index, not by elapsed time — see x_for), so a uniform
-    # parameterization doesn't risk the loops/cusps that uneven spacing can
-    # cause.
+    # sharp corner at each one. Points are NOT guaranteed to be evenly
+    # spaced along x (x_for places them by real elapsed time, and scan
+    # cadence/downsampling can both skip unevenly), so tangents are scaled
+    # by each segment's actual x-distance rather than assuming a uniform
+    # parameterization — otherwise a short segment next to a long one would
+    # get a tangent sized for the wrong interval, overshooting or
+    # undershooting the curve. Boundary segments mirror the adjacent real
+    # interval's *duration* (not just position) for the missing neighbor,
+    # which is what makes this reduce to the exact same control points as
+    # the old uniform-index formula when spacing happens to be even.
     if len(points) == 2:
         (x0, y0), (x1, y1) = points
         return f"M{x0:.1f},{y0:.1f} L{x1:.1f},{y1:.1f}"
@@ -106,13 +111,22 @@ def _catmull_rom_path(points: list[tuple[float, float]]) -> str:
         p1 = points[i]
         p2 = points[i + 1]
         p3 = points[i + 2] if i + 2 < n else points[i + 1]
-        c1x, c1y = p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6
-        c2x, c2y = p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6
+
+        dt_cur = p2[0] - p1[0]
+        dt_before = (p1[0] - p0[0]) if i > 0 else dt_cur
+        dt_after = (p3[0] - p2[0]) if i + 2 < n else dt_cur
+
+        m1_scale = dt_cur / (dt_before + dt_cur) / 3
+        m2_scale = dt_cur / (dt_cur + dt_after) / 3
+        c1x, c1y = p1[0] + (p2[0] - p0[0]) * m1_scale, p1[1] + (p2[1] - p0[1]) * m1_scale
+        c2x, c2y = p2[0] - (p3[0] - p1[0]) * m2_scale, p2[1] - (p3[1] - p1[1]) * m2_scale
         segments.append(f"C{c1x:.1f},{c1y:.1f} {c2x:.1f},{c2y:.1f} {p2[0]:.1f},{p2[1]:.1f}")
     return " ".join(segments)
 
 
-def _trend_sparkline_svg(perf_history: PerformanceHistory | None) -> Markup:
+def _trend_sparkline_svg(
+    perf_history: PerformanceHistory | None, movie_title: str, venue_name: str, display_time: str
+) -> Markup:
     snapshots = perf_history.snapshots if perf_history else []
     if len(snapshots) < 2:
         return Markup('<span class="trend-empty" title="No trend history yet">&ndash;</span>')
@@ -125,9 +139,18 @@ def _trend_sparkline_svg(perf_history: PerformanceHistory | None) -> Markup:
     plot_height = height - margin_top - margin_bottom
     plot_bottom = margin_top + plot_height
     n = len(sampled)
+    timestamps = [s.scan_ended_at for s in sampled]
+    time_span = timestamps[-1] - timestamps[0]
 
     def x_for(i: int) -> float:
-        return margin_left if n == 1 else margin_left + (i / (n - 1)) * plot_width
+        # By elapsed real time, not by index: snapshots aren't guaranteed to
+        # be evenly spaced (scan cadence changes, downsampling picks
+        # whichever indices land closest to an even split — see
+        # _downsample_snapshots), so an index-based placement would visually
+        # misrepresent the actual time gaps between points.
+        if n == 1 or time_span == 0:
+            return margin_left
+        return margin_left + ((timestamps[i] - timestamps[0]) / time_span) * plot_width
 
     def y_for(pct: float) -> float:
         clamped = max(0.0, min(pct, 100.0))
@@ -169,6 +192,24 @@ def _trend_sparkline_svg(perf_history: PerformanceHistory | None) -> Markup:
     data_points = [(x_for(i), y_for(s.availability_pct)) for i, s in enumerate(sampled)]
     path_d = _catmull_rom_path(data_points)
 
+    # Per-point payload for client-side hover/touch scrubbing (see the
+    # trend-hover script in index.html.j2): top/bottom let the JS-drawn
+    # crosshair span the same vertical extent as the axis line above without
+    # duplicating margin math in JS.
+    hover_points = [
+        {
+            "x": round(x, 1),
+            "y": round(y, 1),
+            "pct": round(s.availability_pct, 1),
+            "t": _format_sgt_timestamp(s.scan_ended_at),
+        }
+        for (x, y), s in zip(data_points, sampled)
+    ]
+    hover_payload = json.dumps(
+        {"points": hover_points, "top": margin_top, "bottom": plot_bottom},
+        separators=(",", ":"),
+    )
+
     dot_parts = []
     for i, (cx, cy) in enumerate(data_points):
         is_latest = i == n - 1
@@ -176,18 +217,15 @@ def _trend_sparkline_svg(perf_history: PerformanceHistory | None) -> Markup:
         fill = accent_color if is_latest else line_color
         dot_parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius}" fill="{fill}" />')
 
-    latest = sampled[-1]
-    title = (
-        f"{latest.availability_pct:.1f}% available as of "
-        f"{_format_sgt_timestamp(latest.scan_ended_at)}"
-    )
+    header = f"{movie_title} · {venue_name} · {display_time}"
 
     return Markup(
         '<details class="trend-toggle">'
         '<summary aria-label="Show availability trend">Trend</summary>'
         '<div class="trend-popup">'
-        f'<svg class="trend-sparkline" viewBox="0 0 {width} {height}" width="{width}" height="{height}">'
-        f"<title>{escape(title)}</title>"
+        f'<div class="trend-popup-header">{escape(header)}</div>'
+        f'<svg class="trend-sparkline" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
+        f'data-points="{escape(hover_payload)}">'
         + "".join(axis_parts)
         + f'<path d="{path_d}" fill="none" stroke="{line_color}" stroke-width="2" '
         'stroke-linejoin="round" stroke-linecap="round" />'
