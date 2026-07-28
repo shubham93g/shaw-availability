@@ -1,0 +1,65 @@
+td.cell-time { text-align: right; font-variant-numeric: tabular-nums; }
+td.cell-availability {
+  /* Caps the column itself, not just the inner content: without this,
+     table-layout:auto distributes leftover table width proportionally
+     to each column's preferred width, and .availability-inner's own
+     min-width (needed to stop the pill wrapping) made this column's
+     preferred width far larger than Movie/Venue/Time/Seats/Status's
+     short natural content — so it got a hugely disproportionate share
+     of the extra space. Capping it here lets that space go to columns
+     that actually benefit from it, like Best Seats. Matches
+     .availability-inner's own min-width below (kept in sync) rather
+     than a rounder, looser number, so the column is sized to what the
+     pill+value actually need and nothing more.  */
+  max-width: 7.3rem;
+}
+td.cell-best-seats {
+  /* Best Seats can hold a long, variable-length list of seat ranges —
+     the column most worth prioritizing for extra table width. */
+  width: 30%;
+}
+td.cell-book { text-align: center; padding: 0.3rem; }
+td.cell-book a {
+  display: inline-block;
+  padding: 0.3rem 0.9rem;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 4px;
+  text-decoration: none;
+}
+td.cell-book a:hover { background: #1d4ed8; }
+.availability-inner {
+  /* This flex layout lives on an inner <div>, never directly on the
+     <td>: overriding a table-cell's own display to flex pulls it out
+     of normal table-cell layout, so it stops stretching to the row's
+     full height (rows are often much taller than one line because of
+     the Best Seats column) — the background tint and cell border then
+     only cover the short flex box instead of the whole cell. */
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+  /* Each table (day sections, "Top Most Available") auto-sizes its own
+     columns from its own content, so the same column can end up
+     narrower in one table than another; without a floor here, a
+     table that happens to auto-size this column too tight would wrap
+     the pill onto its own line — a real bug, not just a style choice,
+     since it made the pill's position inconsistent between tables.
+     Sized to the value+gap+pill's actual measured width (~112px) plus
+     a few px of slack, not a round/generous guess — a looser min-width
+     here directly inflates the column's final rendered width (see
+     td.cell-availability's max-width comment above). */
+  min-width: 7.3rem;
+}
+.availability-value {
+  display: inline-block;
+  min-width: 5ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+tbody tr.row-clicked { background: #fff7e6; }
+tbody tr.row-clicked:hover { background: #fdecc8; }
+tbody tr.row-clicked td:first-child {
+  box-shadow: inset 4px 0 0 0 #b45309;
+}

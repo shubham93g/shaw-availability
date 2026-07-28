@@ -1,0 +1,149 @@
+// Crosshair/readout hover layer for trend sparklines. The crosshair
+// line and hover dot are SVG children created lazily on first
+// interaction (looked up via querySelector rather than cached on a JS
+// property, so a chart cloned via cloneNode() — see
+// rebuildMostAvailable() in _venue_filter.js.j2 — creates/reuses its own
+// overlay instead of sharing state with the row it was cloned from); the
+// value readout is plain text in normal document flow, already part of
+// the server-rendered popup markup (see _trend_sparkline_svg in
+// report.py), so it can never render off-screen the way an
+// absolutely-positioned tooltip could on a narrow viewport. Pointer
+// Events unify mouse hover and touch-drag scrubbing into one code
+// path; CSS touch-action: none (see .trend-popup) is what stops the
+// page from scrolling during a touch drag, so no preventDefault()/
+// passive listener handling is needed here.
+var SVG_NS = "http://www.w3.org/2000/svg";
+
+function trendHoverData(svg) {
+  if (svg._trendHoverData === undefined) {
+    try {
+      svg._trendHoverData = JSON.parse(svg.getAttribute("data-points") || "null");
+    } catch (e) {
+      svg._trendHoverData = null;
+    }
+  }
+  return svg._trendHoverData;
+}
+
+function trendHoverOverlay(svg) {
+  var popup = svg.closest(".trend-popup");
+  if (!popup) return null;
+
+  var crosshair = svg.querySelector(".trend-crosshair");
+  if (!crosshair) {
+    crosshair = document.createElementNS(SVG_NS, "line");
+    crosshair.setAttribute("class", "trend-crosshair");
+    svg.appendChild(crosshair);
+  }
+
+  var dot = svg.querySelector(".trend-hover-dot");
+  if (!dot) {
+    dot = document.createElementNS(SVG_NS, "circle");
+    dot.setAttribute("class", "trend-hover-dot");
+    dot.setAttribute("r", "4");
+    svg.appendChild(dot);
+  }
+
+  // The readout line is already part of the server-rendered popup
+  // markup (a sibling of the header, before the <svg>) — nothing to
+  // create here, it's in normal document flow so it can never render
+  // off-screen the way an absolutely-positioned tooltip could.
+  var readout = popup.querySelector(".trend-hover-readout");
+
+  return {
+    crosshair: crosshair,
+    dot: dot,
+    readout: readout,
+    pctEl: readout.querySelector(".trend-hover-pct"),
+    timeEl: readout.querySelector(".trend-hover-time")
+  };
+}
+
+function hideTrendHover(popupOrSvg) {
+  var svg = popupOrSvg.classList && popupOrSvg.classList.contains("trend-sparkline")
+    ? popupOrSvg
+    : popupOrSvg.querySelector(".trend-sparkline");
+  if (!svg) return;
+  var crosshair = svg.querySelector(".trend-crosshair");
+  var dot = svg.querySelector(".trend-hover-dot");
+  var popup = svg.closest(".trend-popup");
+  var readout = popup && popup.querySelector(".trend-hover-readout");
+  if (crosshair) crosshair.style.opacity = "0";
+  if (dot) dot.style.opacity = "0";
+  if (readout) readout.classList.remove("is-active");
+}
+
+function nearestTrendPoint(points, x) {
+  var nearest = points[0];
+  var bestDistance = Math.abs(points[0].x - x);
+  for (var i = 1; i < points.length; i++) {
+    var distance = Math.abs(points[i].x - x);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      nearest = points[i];
+    }
+  }
+  return nearest;
+}
+
+function updateTrendHover(svg, clientX) {
+  var data = trendHoverData(svg);
+  if (!data || !data.points || !data.points.length) return;
+
+  var rect = svg.getBoundingClientRect();
+  if (!rect.width) return;
+  // Scale: CSS pixels per SVG viewBox unit, needed to convert the
+  // pointer's clientX into the same coordinate space as the data
+  // points' x values (svg viewBox units) for the nearest-point lookup
+  // below.
+  var viewBox = svg.viewBox.baseVal;
+  var scale = rect.width / viewBox.width;
+  var svgX = (clientX - rect.left) / scale;
+
+  var point = nearestTrendPoint(data.points, svgX);
+  var overlay = trendHoverOverlay(svg);
+  if (!overlay) return;
+
+  overlay.crosshair.setAttribute("x1", point.x);
+  overlay.crosshair.setAttribute("x2", point.x);
+  overlay.crosshair.setAttribute("y1", data.top);
+  overlay.crosshair.setAttribute("y2", data.bottom);
+  overlay.crosshair.style.opacity = "1";
+
+  overlay.dot.setAttribute("cx", point.x);
+  overlay.dot.setAttribute("cy", point.y);
+  overlay.dot.style.opacity = "1";
+
+  overlay.pctEl.textContent = point.pct.toFixed(1) + "%";
+  overlay.timeEl.textContent = point.t;
+  overlay.readout.classList.add("is-active");
+}
+
+document.body.addEventListener("pointerdown", function (event) {
+  var svg = event.target.closest(".trend-sparkline");
+  if (!svg) return;
+  if (event.pointerType !== "mouse") svg.setPointerCapture(event.pointerId);
+  updateTrendHover(svg, event.clientX);
+});
+
+document.body.addEventListener("pointermove", function (event) {
+  var svg = event.target.closest(".trend-sparkline");
+  if (!svg) return;
+  updateTrendHover(svg, event.clientX);
+});
+
+document.body.addEventListener("pointerup", function (event) {
+  var svg = event.target.closest(".trend-sparkline");
+  if (svg) hideTrendHover(svg);
+});
+document.body.addEventListener("pointercancel", function (event) {
+  var svg = event.target.closest(".trend-sparkline");
+  if (svg) hideTrendHover(svg);
+});
+
+// capture: true because pointerleave doesn't bubble — same reasoning
+// as the window "scroll" listener in _trend_popup.js.j2.
+document.body.addEventListener("pointerleave", function (event) {
+  var svg = event.target.closest(".trend-sparkline");
+  if (svg) hideTrendHover(svg);
+}, true);

@@ -1,0 +1,12 @@
+document.body.addEventListener("click", function (event) {
+  var link = event.target.closest("td.cell-book a");
+  if (!link) return;
+  var row = link.closest("tr");
+  var performanceId = row && row.getAttribute("data-performance-id");
+  if (!performanceId) return;
+  document
+    .querySelectorAll('tr[data-performance-id="' + performanceId + '"]')
+    .forEach(function (matchedRow) {
+      matchedRow.classList.add("row-clicked");
+    });
+});

@@ -1,0 +1,10 @@
+var shareLink = document.getElementById("share-page");
+var shareSeparator = document.getElementById("share-separator");
+if (shareLink && navigator.share) {
+  shareLink.style.display = "";
+  if (shareSeparator) shareSeparator.style.display = "";
+  shareLink.addEventListener("click", function (event) {
+    event.preventDefault();
+    navigator.share({ title: document.title, url: location.origin });
+  });
+}

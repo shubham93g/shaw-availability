@@ -19,6 +19,9 @@ shaw_availability/
 │   ├── persistence.py        # writes index.html/scan_result.json
 │   ├── report.py             # builds the report and renders text/HTML output
 │   ├── templates/            # Jinja2 templates for index.html
+│   │   ├── index.html.j2       # entry point: markup, macros, style/script includes
+│   │   ├── styles/              # per-feature-area CSS partials, {% include %}d
+│   │   └── scripts/             # one partial per <script> tag, {% include %}d
 │   └── cli.py                # argument parsing and wiring
 ```
 
@@ -69,8 +72,9 @@ report to stdout, so the same command covers both output formats:
 python3 main.py report
 ```
 
-Run this after any change to `index.html.j2` (or the Python that feeds it) and
-open `artifacts/index.html` in a browser to check it, instead of writing one-off
+Run this after any change to `index.html.j2`, its `styles/`/`scripts/`
+partials, or the Python that feeds it, and open `artifacts/index.html` in a
+browser to check it, instead of writing one-off
 render scripts or scanning the live API just to see a template change.
 
 ## Code conventions
@@ -113,8 +117,26 @@ conventions, not enforced ones:
 - `.row-clicked` styling is split across three CSS rules (base background,
   `:hover`, and a `box-shadow` accent bar) that must be kept in sync if the
   highlight color ever changes.
-- No template inheritance/partials — single flat file, macros defined inline
-  at the top of `<body>`.
+- No template *inheritance* (no `{% extends %}`/`{% block %}`) — markup and
+  macros stay in one flat `index.html.j2`, defined inline at the top of
+  `<body>`. CSS and JS, however, are split into per-concern partials pulled
+  in via `{% include %}` (`_jinja_env`'s `FileSystemLoader` already supports
+  this — see `report.py:15-19` — so no loader changes were needed):
+  `templates/styles/_*.css.j2` (one file per feature area: base layout,
+  table cells, trend chart/popup, filters/nav, stats tiles) and
+  `templates/scripts/_*.js.j2` (one file per `<script>` tag: generated-ago,
+  row-highlight, trend-popup positioning, trend-hover scrubbing, venue
+  filter, share). Each `<script>` tag still executes as its own top-level
+  scope exactly as before the split — only the *source location* of each
+  block moved, not the runtime structure. Two of the JS partials call a
+  function defined in another one (`_trend_popup.js.j2`'s
+  `closeTrendPopup()` calls `hideTrendHover()` from `_trend_hover.js.j2`;
+  `_venue_filter.js.j2`'s `rebuildMostAvailable()` calls `closeTrendPopup()`
+  from `_trend_popup.js.j2`) — both calls only fire from event handlers
+  after all six scripts have already run and defined their functions, so
+  this is safe, but don't reorder the `{% include %}` calls in
+  `index.html.j2` without checking these two dependencies, since nothing
+  catches a typo'd cross-file function name at build time.
 
 ## Gotchas / invariants to know before touching this code
 

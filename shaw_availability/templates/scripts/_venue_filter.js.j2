@@ -1,0 +1,97 @@
+var VENUE_FILTER_KEY = "shaw-venue-filter";
+var checkboxes = Array.prototype.slice.call(document.querySelectorAll(".venue-checkbox"));
+
+function selectedVenues() {
+  return checkboxes.filter(function (cb) { return cb.checked; }).map(function (cb) { return cb.value; });
+}
+
+function rebuildMostAvailable() {
+  var section = document.querySelector("[data-most-available]");
+  if (!section) return;
+  var tbody = section.querySelector("tbody");
+  if (!tbody) return;
+
+  // Close any open trend popup first: closeTrendPopup() (defined in
+  // _trend_popup.js.j2) moves the popup back inside its <details> before
+  // cloneNode below runs, so a row's clone always carries its full popup
+  // markup rather than an empty <details> whose popup is sitting detached
+  // under <body>.
+  document.querySelectorAll("details.trend-toggle[open]").forEach(closeTrendPopup);
+
+  var n = parseInt(section.getAttribute("data-most-available-count"), 10);
+  var candidates = Array.prototype.slice
+    .call(document.querySelectorAll("[data-day-section] tr[data-venue]"))
+    .filter(function (row) { return !row.classList.contains("venue-hidden"); })
+    .sort(function (a, b) {
+      return parseFloat(b.getAttribute("data-availability")) - parseFloat(a.getAttribute("data-availability"));
+    })
+    .slice(0, n);
+
+  tbody.innerHTML = "";
+  candidates.forEach(function (row) {
+    var clone = row.cloneNode(true);
+    clone.classList.remove("venue-hidden");
+    var dateCell = document.createElement("td");
+    dateCell.textContent = row.getAttribute("data-date-label");
+    clone.insertBefore(dateCell, clone.firstChild);
+    tbody.appendChild(clone);
+  });
+}
+
+function applyFilter() {
+  var selected = selectedVenues();
+  var selectedSet = {};
+  selected.forEach(function (v) { selectedSet[v] = true; });
+
+  document.querySelectorAll("tr[data-venue]").forEach(function (row) {
+    var visible = !!selectedSet[row.getAttribute("data-venue")];
+    row.classList.toggle("venue-hidden", !visible);
+  });
+
+  document.querySelectorAll("[data-day-section]").forEach(function (section) {
+    var visibleRows = Array.prototype.slice
+      .call(section.querySelectorAll("tr[data-venue]"))
+      .filter(function (row) { return !row.classList.contains("venue-hidden"); });
+    var countEl = section.querySelector(".show-count");
+    var avgEl = section.querySelector(".avg-pct");
+    if (countEl) countEl.textContent = visibleRows.length;
+    if (avgEl) {
+      if (visibleRows.length === 0) {
+        avgEl.textContent = "n/a";
+      } else {
+        var total = visibleRows.reduce(function (sum, row) {
+          return sum + parseFloat(row.getAttribute("data-availability"));
+        }, 0);
+        avgEl.textContent = (total / visibleRows.length).toFixed(1);
+      }
+    }
+  });
+
+  rebuildMostAvailable();
+}
+
+if (checkboxes.length) {
+  try {
+    var stored = JSON.parse(localStorage.getItem(VENUE_FILTER_KEY) || "null");
+    if (Array.isArray(stored)) {
+      var knownVenues = checkboxes.map(function (cb) { return cb.value; });
+      var storedValid = stored.filter(function (v) { return knownVenues.indexOf(v) !== -1; });
+      if (storedValid.length) {
+        var storedSet = {};
+        storedValid.forEach(function (v) { storedSet[v] = true; });
+        checkboxes.forEach(function (cb) { cb.checked = !!storedSet[cb.value]; });
+      }
+    }
+  } catch (e) {
+    // Ignore malformed localStorage content and keep the default all-checked state.
+  }
+
+  checkboxes.forEach(function (cb) {
+    cb.addEventListener("change", function () {
+      localStorage.setItem(VENUE_FILTER_KEY, JSON.stringify(selectedVenues()));
+      applyFilter();
+    });
+  });
+
+  applyFilter();
+}

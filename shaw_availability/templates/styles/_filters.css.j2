@@ -1,0 +1,16 @@
+#venue-filter { display: flex; flex-wrap: wrap; gap: 0.6rem 1.2rem; margin: 1rem 0; }
+#venue-filter label { display: inline-flex; align-items: center; gap: 0.35rem; }
+#date-jump { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+#date-jump a, .back-to-top {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: #fafafa;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+#date-jump a:hover, .back-to-top:hover { background: #f4f4f4; }
+section[data-day-section] { scroll-margin-top: 0.5rem; }
+tr[data-venue].venue-hidden { display: none; }

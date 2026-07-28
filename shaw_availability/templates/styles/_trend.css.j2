@@ -1,0 +1,65 @@
+.trend-toggle { display: inline-block; }
+.trend-toggle summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2563eb;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  white-space: nowrap;
+}
+.trend-toggle summary:hover { background: #dbeafe; }
+.trend-toggle summary::-webkit-details-marker { display: none; }
+.trend-popup {
+  /* Moved to a direct child of <body> and placed by JS (see the
+     trend-toggle script below) when opened, with position: absolute
+     relative to the document — a table-scroll ancestor with
+     overflow-x: auto implicitly clips overflow-y too (per the CSS
+     overflow spec), so a popup this size can't be positioned relative
+     to its row without being cut off for rows near a section's bottom.
+     Positioned once at open time and closed on any scroll (see the
+     trend-toggle script) rather than tracked continuously — simpler
+     than reconciling page scroll against a nested container's own
+     scroll (e.g. .table-scroll's horizontal pan on narrow viewports). */
+  position: absolute;
+  z-index: 1000;
+  padding: 0.4rem 0.5rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  /* The whole popup, not just the chart, refuses to start a native
+     scroll/pan gesture: a touch that starts a pixel outside the SVG
+     (header text, padding — easy to hit on a small popup on a small
+     phone) would otherwise still hand off to the browser's scroll
+     gesture before the drag ever reaches the chart. The popup has no
+     internal scroll of its own once open, so this has no downside. */
+  touch-action: none;
+}
+.trend-popup-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+}
+.trend-hover-readout {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.35rem;
+  min-height: 1.1em;
+}
+.trend-hover-readout .trend-hover-pct,
+.trend-hover-readout .trend-hover-time { display: none; }
+.trend-hover-readout.is-active .trend-hover-placeholder { display: none; }
+.trend-hover-readout.is-active .trend-hover-pct,
+.trend-hover-readout.is-active .trend-hover-time { display: inline; }
+.trend-hover-pct { font-weight: 600; color: #111827; }
+.trend-hover-time { color: #6b7280; margin-left: 0.35rem; }
+.trend-sparkline { display: block; }
+.trend-crosshair { stroke: #9ca3af; stroke-width: 1; pointer-events: none; opacity: 0; }
+.trend-hover-dot { fill: #2e7d32; stroke: #fff; stroke-width: 1.5; pointer-events: none; opacity: 0; }

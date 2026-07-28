@@ -1,0 +1,98 @@
+// Popups are detached to a direct child of <body> while open (see the
+// .trend-popup CSS comment for why) and moved back into their owning
+// <details> on close, so a row's markup is always complete again by the
+// time rebuildMostAvailable() might clone it. Positioning happens once,
+// synchronously, at open time (closeAllTrendPopups below closes rather
+// than re-tracks on scroll) — so there's no async gap where an
+// unpositioned popup could flash in the wrong place before a listener
+// catches up.
+function closeTrendPopup(details) {
+  details.open = false;
+  var popup = details._openPopup;
+  if (popup) {
+    // hideTrendHover is defined in _trend_hover.js.j2, loaded after this
+    // file — safe because this only runs from an event handler, by which
+    // point every <script> tag has already executed and defined its
+    // functions.
+    hideTrendHover(popup);
+    details.appendChild(popup);
+    details._openPopup = null;
+  }
+}
+
+function openTrendPopup(details) {
+  document.querySelectorAll("details.trend-toggle[open]").forEach(function (other) {
+    if (other !== details) closeTrendPopup(other);
+  });
+
+  var popup = details.querySelector(".trend-popup");
+  var summary = details.querySelector("summary");
+  if (!popup || !summary) return;
+
+  details.open = true;
+
+  var rect = summary.getBoundingClientRect();
+  document.body.appendChild(popup);
+  details._openPopup = popup;
+
+  var margin = 8;
+  var left = rect.left + window.scrollX + rect.width / 2 - popup.offsetWidth / 2;
+  left = Math.max(
+    window.scrollX + margin,
+    Math.min(left, window.scrollX + window.innerWidth - popup.offsetWidth - margin)
+  );
+  var top = rect.bottom + window.scrollY + 4;
+  if (rect.bottom + popup.offsetHeight + 4 > window.innerHeight - margin) {
+    top = rect.top + window.scrollY - popup.offsetHeight - 4;
+    // On a viewport short enough that even flipping above the anchor
+    // doesn't fully fit, don't let it go further than the top margin —
+    // better to overlap the anchor slightly than render off-screen
+    // above the current scroll position with no visible way to it.
+    top = Math.max(window.scrollY + margin, top);
+  }
+  popup.style.left = left + "px";
+  popup.style.top = top + "px";
+}
+
+document.body.addEventListener("click", function (event) {
+  var summary = event.target.closest(".trend-toggle > summary");
+  if (summary) {
+    // Handle the toggle ourselves (open/close, positioning) rather than
+    // letting <details> do it natively: the native path fires an async
+    // "toggle" event, leaving a window where the browser can paint the
+    // just-opened popup at its unset default position before a listener
+    // repositions it — visible as a flash in the wrong place.
+    event.preventDefault();
+    var details = summary.parentElement;
+    if (details.open) {
+      closeTrendPopup(details);
+    } else {
+      openTrendPopup(details);
+    }
+    return;
+  }
+
+  document.querySelectorAll("details.trend-toggle[open]").forEach(function (details) {
+    var popup = details._openPopup;
+    var insideTrigger = details.contains(event.target);
+    var insidePopup = popup && popup.contains(event.target);
+    if (!insideTrigger && !insidePopup) closeTrendPopup(details);
+  });
+});
+
+function closeAllTrendPopups() {
+  document.querySelectorAll("details.trend-toggle[open]").forEach(closeTrendPopup);
+}
+
+// Closing on any scroll — page scroll or a nested container's own
+// scroll, like .table-scroll's horizontal pan on narrow viewports —
+// keeps behavior consistent regardless of scroll source, rather than
+// tracking one axis and closing on the other. capture: true is what
+// catches .table-scroll's scroll here: it doesn't bubble, but a
+// capturing listener on window still sees it on the way down to target.
+window.addEventListener("scroll", closeAllTrendPopups, { capture: true, passive: true });
+
+// Repositioning an open popup on resize would need the same math as
+// open-time placement; closing it instead (like many native popovers do
+// on a layout change) is simpler and avoids a stale/misplaced popup.
+window.addEventListener("resize", closeAllTrendPopups);
