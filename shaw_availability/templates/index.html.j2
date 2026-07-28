@@ -12,6 +12,25 @@
     th { background: #f4f4f4; }
     tbody tr:hover { background: #f9fafb; }
     td.cell-time { text-align: right; font-variant-numeric: tabular-nums; }
+    td.cell-availability {
+      /* Caps the column itself, not just the inner content: without this,
+         table-layout:auto distributes leftover table width proportionally
+         to each column's preferred width, and .availability-inner's own
+         min-width (needed to stop the pill wrapping) made this column's
+         preferred width far larger than Movie/Venue/Time/Seats/Status's
+         short natural content — so it got a hugely disproportionate share
+         of the extra space. Capping it here lets that space go to columns
+         that actually benefit from it, like Best Seats. Matches
+         .availability-inner's own min-width below (kept in sync) rather
+         than a rounder, looser number, so the column is sized to what the
+         pill+value actually need and nothing more.  */
+      max-width: 7.3rem;
+    }
+    td.cell-best-seats {
+      /* Best Seats can hold a long, variable-length list of seat ranges —
+         the column most worth prioritizing for extra table width. */
+      width: 30%;
+    }
     td.cell-book { text-align: center; padding: 0.3rem; }
     td.cell-book a {
       display: inline-block;
@@ -23,14 +42,50 @@
       text-decoration: none;
     }
     td.cell-book a:hover { background: #1d4ed8; }
-    td.cell-trend { text-align: center; padding: 0.2rem 0.4rem; }
+    .availability-inner {
+      /* This flex layout lives on an inner <div>, never directly on the
+         <td>: overriding a table-cell's own display to flex pulls it out
+         of normal table-cell layout, so it stops stretching to the row's
+         full height (rows are often much taller than one line because of
+         the Best Seats column) — the background tint and cell border then
+         only cover the short flex box instead of the whole cell. */
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: nowrap;
+      /* Each table (day sections, "Top Most Available") auto-sizes its own
+         columns from its own content, so the same column can end up
+         narrower in one table than another; without a floor here, a
+         table that happens to auto-size this column too tight would wrap
+         the pill onto its own line — a real bug, not just a style choice,
+         since it made the pill's position inconsistent between tables.
+         Sized to the value+gap+pill's actual measured width (~112px) plus
+         a few px of slack, not a round/generous guess — a looser min-width
+         here directly inflates the column's final rendered width (see
+         td.cell-availability's max-width comment above). */
+      min-width: 7.3rem;
+    }
+    .availability-value {
+      display: inline-block;
+      min-width: 5ch;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
     .trend-toggle { display: inline-block; }
     .trend-toggle summary {
       cursor: pointer;
       list-style: none;
-      font-size: 0.78rem;
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 600;
       color: #2563eb;
+      padding: 0.25rem 0.7rem;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      background: #eff6ff;
+      white-space: nowrap;
     }
+    .trend-toggle summary:hover { background: #dbeafe; }
     .trend-toggle summary::-webkit-details-marker { display: none; }
     .trend-popup {
       /* Moved to a direct child of <body> and placed by JS (see the
@@ -50,6 +105,13 @@
       border: 1px solid #ddd;
       border-radius: 4px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      /* The whole popup, not just the chart, refuses to start a native
+         scroll/pan gesture: a touch that starts a pixel outside the SVG
+         (header text, padding — easy to hit on a small popup on a small
+         phone) would otherwise still hand off to the browser's scroll
+         gesture before the drag ever reaches the chart. The popup has no
+         internal scroll of its own once open, so this has no downside. */
+      touch-action: none;
     }
     .trend-popup-header {
       font-size: 0.75rem;
@@ -58,27 +120,22 @@
       margin-bottom: 0.25rem;
       white-space: nowrap;
     }
-    .trend-sparkline { display: block; touch-action: none; }
-    .trend-empty { color: #9ca3af; }
+    .trend-hover-readout {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-bottom: 0.35rem;
+      min-height: 1.1em;
+    }
+    .trend-hover-readout .trend-hover-pct,
+    .trend-hover-readout .trend-hover-time { display: none; }
+    .trend-hover-readout.is-active .trend-hover-placeholder { display: none; }
+    .trend-hover-readout.is-active .trend-hover-pct,
+    .trend-hover-readout.is-active .trend-hover-time { display: inline; }
+    .trend-hover-pct { font-weight: 600; color: #111827; }
+    .trend-hover-time { color: #6b7280; margin-left: 0.35rem; }
+    .trend-sparkline { display: block; }
     .trend-crosshair { stroke: #9ca3af; stroke-width: 1; pointer-events: none; opacity: 0; }
     .trend-hover-dot { fill: #2e7d32; stroke: #fff; stroke-width: 1.5; pointer-events: none; opacity: 0; }
-    .trend-hover-tooltip {
-      position: absolute;
-      pointer-events: none;
-      opacity: 0;
-      transform: translate(-50%, -100%);
-      margin-top: -6px;
-      background: #111827;
-      color: #fff;
-      font-size: 0.72rem;
-      line-height: 1.3;
-      padding: 0.15rem 0.4rem;
-      border-radius: 4px;
-      white-space: nowrap;
-      z-index: 1001;
-    }
-    .trend-hover-tooltip .trend-hover-pct { font-weight: 600; }
-    .trend-hover-tooltip .trend-hover-time { color: #9ca3af; margin-left: 0.35rem; }
     tbody tr.row-clicked { background: #fff7e6; }
     tbody tr.row-clicked:hover { background: #fdecc8; }
     tbody tr.row-clicked td:first-child {
@@ -122,7 +179,7 @@
   <thead>
     <tr>
       {% if show_date %}<th>Date</th>{% endif %}<th>Movie</th><th>Venue</th><th>Time</th><th>Availability</th>
-      <th>Trend</th><th>Seats</th><th>Status</th><th>Best Seats</th><th>Book</th>
+      <th>Seats</th><th>Status</th><th>Best Seats</th><th>Book</th>
     </tr>
   </thead>
   {% endmacro %}
@@ -132,11 +189,11 @@
     {{ cell(show.movie_title) }}
     {{ cell(show.venue_name) }}
     {{ cell(show.display_time, "cell-time") }}
-    {{ cell("%.1f%%"|format(show.availability_pct), style=availability_style(show.availability_pct)) }}
-    {{ cell(trend_sparkline(report.history_by_performance_id.get(show.performance_id), show.movie_title, show.venue_name, show.display_time), "cell-trend") }}
+    {% set availability_cell %}<div class="availability-inner"><span class="availability-value">{{ "%.1f%%"|format(show.availability_pct) }}</span>{{ trend_sparkline(report.history_by_performance_id.get(show.performance_id), show.movie_title, show.venue_name, show.display_time) }}</div>{% endset %}
+    {{ cell(availability_cell, "cell-availability", availability_style(show.availability_pct)) }}
     {{ cell(show.available ~ "/" ~ show.total_seats) }}
     {{ cell(status_label(show.api_seating_status)) }}
-    {{ cell(show.best_seats_available|join(", ") if show.best_seats_available else "-") }}
+    {{ cell(show.best_seats_available|join(", ") if show.best_seats_available else "-", "cell-best-seats") }}
     {{ book_cell(booking_url(show.performance_id)) }}
   </tr>
   {% endmacro %}
@@ -358,16 +415,20 @@
   </script>
 
   <script>
-    // Crosshair/tooltip hover layer for trend sparklines. Overlay elements
-    // (crosshair line, hover dot, tooltip div) are created lazily on first
-    // interaction and looked up via querySelector rather than cached on a
-    // JS property, so a chart cloned via cloneNode() (see
-    // rebuildMostAvailable() below) creates/reuses its own overlay instead
-    // of sharing state with the row it was cloned from. Pointer Events
-    // unify mouse hover and touch-drag scrubbing into one code path; CSS
-    // touch-action: none (see .trend-sparkline) is what stops the page
-    // from scrolling during a touch drag, so no preventDefault()/passive
-    // listener handling is needed here.
+    // Crosshair/readout hover layer for trend sparklines. The crosshair
+    // line and hover dot are SVG children created lazily on first
+    // interaction (looked up via querySelector rather than cached on a JS
+    // property, so a chart cloned via cloneNode() — see
+    // rebuildMostAvailable() below — creates/reuses its own overlay
+    // instead of sharing state with the row it was cloned from); the value
+    // readout is plain text in normal document flow, already part of the
+    // server-rendered popup markup (see _trend_sparkline_svg in
+    // report.py), so it can never render off-screen the way an
+    // absolutely-positioned tooltip could on a narrow viewport. Pointer
+    // Events unify mouse hover and touch-drag scrubbing into one code
+    // path; CSS touch-action: none (see .trend-popup) is what stops the
+    // page from scrolling during a touch drag, so no preventDefault()/
+    // passive listener handling is needed here.
     var SVG_NS = "http://www.w3.org/2000/svg";
 
     function trendHoverData(svg) {
@@ -400,25 +461,18 @@
         svg.appendChild(dot);
       }
 
-      var tooltip = popup.querySelector(".trend-hover-tooltip");
-      if (!tooltip) {
-        tooltip = document.createElement("div");
-        tooltip.className = "trend-hover-tooltip";
-        var pctEl = document.createElement("span");
-        pctEl.className = "trend-hover-pct";
-        var timeEl = document.createElement("span");
-        timeEl.className = "trend-hover-time";
-        tooltip.appendChild(pctEl);
-        tooltip.appendChild(timeEl);
-        popup.appendChild(tooltip);
-      }
+      // The readout line is already part of the server-rendered popup
+      // markup (a sibling of the header, before the <svg>) — nothing to
+      // create here, it's in normal document flow so it can never render
+      // off-screen the way an absolutely-positioned tooltip could.
+      var readout = popup.querySelector(".trend-hover-readout");
 
       return {
         crosshair: crosshair,
         dot: dot,
-        tooltip: tooltip,
-        pctEl: tooltip.querySelector(".trend-hover-pct"),
-        timeEl: tooltip.querySelector(".trend-hover-time")
+        readout: readout,
+        pctEl: readout.querySelector(".trend-hover-pct"),
+        timeEl: readout.querySelector(".trend-hover-time")
       };
     }
 
@@ -430,10 +484,10 @@
       var crosshair = svg.querySelector(".trend-crosshair");
       var dot = svg.querySelector(".trend-hover-dot");
       var popup = svg.closest(".trend-popup");
-      var tooltip = popup && popup.querySelector(".trend-hover-tooltip");
+      var readout = popup && popup.querySelector(".trend-hover-readout");
       if (crosshair) crosshair.style.opacity = "0";
       if (dot) dot.style.opacity = "0";
-      if (tooltip) tooltip.style.opacity = "0";
+      if (readout) readout.classList.remove("is-active");
     }
 
     function nearestTrendPoint(points, x) {
@@ -455,11 +509,10 @@
 
       var rect = svg.getBoundingClientRect();
       if (!rect.width) return;
-      // Scale: CSS pixels per SVG viewBox unit. The chart's width/height
-      // attributes always match its viewBox exactly (see the <svg> markup
-      // built in _trend_sparkline_svg), so this is 1 today — computed
-      // rather than assumed, so both directions below stay correct if
-      // that ever changes.
+      // Scale: CSS pixels per SVG viewBox unit, needed to convert the
+      // pointer's clientX into the same coordinate space as the data
+      // points' x values (svg viewBox units) for the nearest-point lookup
+      // below.
       var viewBox = svg.viewBox.baseVal;
       var scale = rect.width / viewBox.width;
       var svgX = (clientX - rect.left) / scale;
@@ -480,15 +533,7 @@
 
       overlay.pctEl.textContent = point.pct.toFixed(1) + "%";
       overlay.timeEl.textContent = point.t;
-
-      // The tooltip isn't part of the SVG, so its position is the data
-      // point's SVG-space (x, y) converted back to CSS pixels via the same
-      // scale, then offset by the svg's own position within .trend-popup
-      // (its offsetParent, since .trend-popup is position: absolute) — not
-      // a full CTM/matrix transform.
-      overlay.tooltip.style.left = (svg.offsetLeft + point.x * scale) + "px";
-      overlay.tooltip.style.top = (svg.offsetTop + point.y * scale) + "px";
-      overlay.tooltip.style.opacity = "1";
+      overlay.readout.classList.add("is-active");
     }
 
     document.body.addEventListener("pointerdown", function (event) {

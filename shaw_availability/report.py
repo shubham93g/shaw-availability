@@ -37,6 +37,14 @@ def _format_sgt_timestamp(epoch_seconds: int) -> str:
     return datetime.fromtimestamp(epoch_seconds, tz=config.SGT).strftime(f"{config.DATE_FORMAT} %H:%M %Z")
 
 
+def _short_hover_timestamp(epoch_seconds: int) -> str:
+    # Same short day/date style as _short_date_label, plus a 24h time —
+    # dropping the time would make every same-day hover point on the trend
+    # chart show an identical label, defeating the point of scrubbing.
+    dt = datetime.fromtimestamp(epoch_seconds, tz=config.SGT)
+    return f"{dt.strftime('%a')}, {dt.day} {dt.strftime('%b')}, {dt.strftime('%H:%M')}"
+
+
 def _status_label(code: str) -> str:
     return config.SHOW_STATUS_LABELS.get(code, code)
 
@@ -129,7 +137,7 @@ def _trend_sparkline_svg(
 ) -> Markup:
     snapshots = perf_history.snapshots if perf_history else []
     if len(snapshots) < 2:
-        return Markup('<span class="trend-empty" title="No trend history yet">&ndash;</span>')
+        return Markup("")
 
     sampled = _downsample_snapshots(snapshots, config.TREND_SPARKLINE_MAX_POINTS)
     width, height = config.TREND_CHART_WIDTH, config.TREND_CHART_HEIGHT
@@ -201,7 +209,7 @@ def _trend_sparkline_svg(
             "x": round(x, 1),
             "y": round(y, 1),
             "pct": round(s.availability_pct, 1),
-            "t": _format_sgt_timestamp(s.scan_ended_at),
+            "t": _short_hover_timestamp(s.scan_ended_at),
         }
         for (x, y), s in zip(data_points, sampled)
     ]
@@ -224,6 +232,10 @@ def _trend_sparkline_svg(
         '<summary aria-label="Show availability trend">Trend</summary>'
         '<div class="trend-popup">'
         f'<div class="trend-popup-header">{escape(header)}</div>'
+        '<div class="trend-hover-readout">'
+        '<span class="trend-hover-placeholder">Hover or drag to see a value</span>'
+        '<span class="trend-hover-pct"></span><span class="trend-hover-time"></span>'
+        '</div>'
         f'<svg class="trend-sparkline" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
         f'data-points="{escape(hover_payload)}">'
         + "".join(axis_parts)

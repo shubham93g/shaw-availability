@@ -124,16 +124,15 @@ class CatmullRomPathTest(unittest.TestCase):
 
 
 class TrendSparklineSvgTest(unittest.TestCase):
-    def test_returns_placeholder_for_fewer_than_two_snapshots(self):
-        self.assertIn("trend-empty", _trend_sparkline_svg(None, "Test Movie", "Lido IMAX", "9:15 AM"))
+    def test_returns_nothing_for_fewer_than_two_snapshots(self):
+        self.assertEqual(_trend_sparkline_svg(None, "Test Movie", "Lido IMAX", "9:15 AM"), "")
 
         one_snapshot = PerformanceHistory(
             performance_id=1,
             snapshots=[HistorySnapshot(scan_ended_at=1784995000, availability_pct=50.0)],
         )
         markup = _trend_sparkline_svg(one_snapshot, "Test Movie", "Lido IMAX", "9:15 AM")
-        self.assertIn("trend-empty", markup)
-        self.assertNotIn("<svg", markup)
+        self.assertEqual(markup, "")
 
     def test_renders_smooth_path_with_one_segment_between_consecutive_points(self):
         perf_history = PerformanceHistory(
@@ -273,9 +272,32 @@ class TrendSparklineSvgTest(unittest.TestCase):
         # inside a double-quoted attribute).
         payload = json.loads(html.unescape(match.group(1)))
         self.assertEqual([p["pct"] for p in payload["points"]], [50.0, 40.0, 30.0])
-        self.assertIn("t", payload["points"][0])
+        # Short "Day, D Mon, HH:MM" style (see _short_hover_timestamp), not
+        # _format_sgt_timestamp's longer "YYYY-MM-DD HH:MM SGT" — a same-day
+        # hover point still needs the time to stay distinguishable from
+        # its neighbors, so only the date portion is shortened.
+        self.assertEqual(payload["points"][0]["t"], "Sat, 25 Jul, 23:56")
         self.assertIn("top", payload)
         self.assertIn("bottom", payload)
+
+    def test_renders_a_static_hover_readout_with_placeholder_and_empty_value_spans(self):
+        perf_history = PerformanceHistory(
+            performance_id=1,
+            snapshots=[
+                HistorySnapshot(scan_ended_at=1784995000, availability_pct=50.0),
+                HistorySnapshot(scan_ended_at=1784995567, availability_pct=40.0),
+            ],
+        )
+
+        markup = _trend_sparkline_svg(perf_history, "Test Movie", "Lido IMAX", "9:15 AM")
+
+        # Rendered server-side (not created lazily by JS like the crosshair
+        # and hover dot) so it's plain content in normal document flow —
+        # this is what makes it immune to the off-screen-tooltip bug a
+        # positioned/transformed element had on narrow viewports.
+        self.assertIn('<div class="trend-hover-readout">', markup)
+        self.assertIn('<span class="trend-hover-placeholder">', markup)
+        self.assertIn('<span class="trend-hover-pct"></span><span class="trend-hover-time"></span>', markup)
 
 
 class BuildReportHistoryWiringTest(unittest.TestCase):
