@@ -1,5 +1,7 @@
 name: Scan
 
+run-name: "Scan (${{ inputs.source }})"
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,6 +9,13 @@ on:
         description: "Trigger the report workflow (which then deploys) after a successful scan"
         type: boolean
         default: true
+      source:
+        description: "What triggered this run (set to 'cron' by the cron-trigger Worker; leave as manual for a human-initiated run)"
+        type: choice
+        options:
+          - manual
+          - cron
+        default: manual
 
 permissions:
   contents: write
@@ -20,6 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Record trigger source
+        run: |
+          echo "Triggered by: **${{ inputs.source }}**" >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v6

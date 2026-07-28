@@ -20,7 +20,7 @@ async function dispatchWorkflow(env) {
       "User-Agent": "shaw-availability-cron-worker",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ ref: env.GITHUB_REF }),
+    body: JSON.stringify({ ref: env.GITHUB_REF, inputs: { source: "cron" } }),
   });
 
   if (!response.ok) {

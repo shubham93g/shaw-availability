@@ -146,7 +146,10 @@ graph, instead of three unrelated top-level runs:
   7:00am to 11:00pm SGT, and every 2 hours overnight (11:00pm, 1:00am,
   3:00am, 5:00am, 7:00am SGT) — by a Cloudflare Worker on a Cron Trigger
   (see [Cron trigger](#cron-trigger-cloudflare-worker) below) that calls
-  GitHub's `workflow_dispatch` API. After publishing, it calls `report.yml`
+  GitHub's `workflow_dispatch` API, passing a `source: cron` input so the
+  run can be told apart from a human-initiated dispatch (which leaves
+  `source` at its `manual` default) — visible in the run's name and job
+  summary in the Actions tab. After publishing, it calls `report.yml`
   as a job (`uses: ./.github/workflows/report.yml`), unless run with its
   `generate_report` input set to `false`.
 - **`.github/workflows/report.yml`** also runs the test suite first — unless
@@ -188,7 +191,9 @@ machine being awake and has neither of those problems.
 native `schedule: cron` (see [Scheduling](#scheduling) above for why). Every
 30 minutes from 7:00am to 11:00pm SGT, and every 2 hours overnight (11:00pm,
 1:00am, 3:00am, 5:00am, 7:00am SGT), it calls GitHub's `workflow_dispatch`
-API to kick off `scan.yml`. Its dispatch target branch is hardcoded to `main`
+API to kick off `scan.yml`, passing `source: cron` as an input so the
+resulting run is labeled `Scan (cron)` in the Actions tab rather than
+`Scan (manual)`. Its dispatch target branch is hardcoded to `main`
 (`GITHUB_REF` in `cron-trigger/wrangler.toml`).
 
 **One-time setup:**
