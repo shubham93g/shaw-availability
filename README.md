@@ -149,9 +149,12 @@ graph, instead of three unrelated top-level runs:
   GitHub's `workflow_dispatch` API. After publishing, it calls `report.yml`
   as a job (`uses: ./.github/workflows/report.yml`), unless run with its
   `generate_report` input set to `false`.
-- **`.github/workflows/report.yml`** also runs the test suite first, then
-  downloads `scan_result.json` from the `latest` release, runs `report` to
-  render `index.html` from it, and publishes `index.html` back to the same
+- **`.github/workflows/report.yml`** also runs the test suite first — unless
+  it was called from `scan.yml`, which passes `skip_tests: true` since it
+  already ran the same suite against the same commit moments earlier; a
+  direct manual dispatch always runs them — then downloads
+  `scan_result.json` from the `latest` release, runs `report` to render
+  `index.html` from it, and publishes `index.html` back to the same
   `latest` release. This is the workflow to run manually after pushing a
   change that only affects the report/template code (not the scan itself)
   — it redeploys the latest data with the new rendering, without spending a

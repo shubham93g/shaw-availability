@@ -52,4 +52,7 @@ jobs:
     needs: scan
     if: ${{ inputs.generate_report }}
     uses: ./.github/workflows/report.yml
+    with:
+      deploy: true
+      skip_tests: true
     secrets: inherit

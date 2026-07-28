@@ -13,6 +13,10 @@ on:
         description: "Trigger the deploy workflow after generating the report"
         type: boolean
         default: true
+      skip_tests:
+        description: "Skip the test suite (set by scan.yml, which already ran it against the same commit)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -36,6 +40,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run tests
+        if: ${{ !inputs.skip_tests }}
         run: python -m unittest discover -s tests -v
 
       - name: Download latest scan result
