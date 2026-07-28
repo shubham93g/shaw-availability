@@ -5,9 +5,10 @@ from datetime import datetime, time
 from pathlib import Path
 
 import jinja2
+from markupsafe import Markup, escape
 
 from . import config
-from .models import FailedCall, ScanResult, ShowStats
+from .models import FailedCall, History, HistorySnapshot, PerformanceHistory, ScanResult, ShowStats
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _jinja_env = jinja2.Environment(
@@ -51,11 +52,158 @@ def _availability_style(pct: float) -> str:
     return f"background-color: rgba(46, 125, 50, {alpha:.2f})"
 
 
+def _downsample_snapshots(
+    snapshots: list[HistorySnapshot], max_points: int
+) -> list[HistorySnapshot]:
+    # Evenly sample across the *entire* tracked history rather than just
+    # taking the most recent max_points: at the real ~30-min scan cadence, a
+    # performance can accumulate hundreds of snapshots over the ~14 days it's
+    # in scope, so "last N" would only ever show the last few hours and hide
+    # any longer-run trend. Always includes the first and last snapshot.
+    n = len(snapshots)
+    if n <= max_points:
+        return snapshots
+
+    indices = sorted({round(i * (n - 1) / (max_points - 1)) for i in range(max_points)})
+    return [snapshots[i] for i in indices]
+
+
+def _axis_time_labels(
+    sampled: list[HistorySnapshot], indices: list[int]
+) -> list[tuple[int, str]]:
+    # Full "24 Jul 05:52" for the first label, then just "07:32" for later
+    # labels as long as the calendar date (SGT) hasn't changed, so three
+    # same-day labels don't each repeat the date and crowd each other.
+    labels = []
+    previous_date = None
+    for i in indices:
+        dt = datetime.fromtimestamp(sampled[i].scan_ended_at, tz=config.SGT)
+        date_str = dt.strftime("%d %b")
+        time_str = dt.strftime("%H:%M")
+        label = time_str if date_str == previous_date else f"{date_str} {time_str}"
+        previous_date = date_str
+        labels.append((i, label))
+    return labels
+
+
+def _catmull_rom_path(points: list[tuple[float, float]]) -> str:
+    # A cubic-Bezier-per-segment Catmull-Rom spline: unlike a polyline, it
+    # passes through every point with a continuous tangent instead of a
+    # sharp corner at each one. Boundary segments mirror the nearest
+    # interior point in place of an out-of-range neighbor (the standard
+    # Catmull-Rom edge case), and x is already evenly spaced (points are
+    # placed by index, not by elapsed time — see x_for), so a uniform
+    # parameterization doesn't risk the loops/cusps that uneven spacing can
+    # cause.
+    if len(points) == 2:
+        (x0, y0), (x1, y1) = points
+        return f"M{x0:.1f},{y0:.1f} L{x1:.1f},{y1:.1f}"
+
+    n = len(points)
+    segments = [f"M{points[0][0]:.1f},{points[0][1]:.1f}"]
+    for i in range(n - 1):
+        p0 = points[i - 1] if i > 0 else points[i]
+        p1 = points[i]
+        p2 = points[i + 1]
+        p3 = points[i + 2] if i + 2 < n else points[i + 1]
+        c1x, c1y = p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6
+        c2x, c2y = p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6
+        segments.append(f"C{c1x:.1f},{c1y:.1f} {c2x:.1f},{c2y:.1f} {p2[0]:.1f},{p2[1]:.1f}")
+    return " ".join(segments)
+
+
+def _trend_sparkline_svg(perf_history: PerformanceHistory | None) -> Markup:
+    snapshots = perf_history.snapshots if perf_history else []
+    if len(snapshots) < 2:
+        return Markup('<span class="trend-empty" title="No trend history yet">&ndash;</span>')
+
+    sampled = _downsample_snapshots(snapshots, config.TREND_SPARKLINE_MAX_POINTS)
+    width, height = config.TREND_CHART_WIDTH, config.TREND_CHART_HEIGHT
+    margin_left, margin_right = config.TREND_CHART_MARGIN_LEFT, config.TREND_CHART_MARGIN_RIGHT
+    margin_top, margin_bottom = config.TREND_CHART_MARGIN_TOP, config.TREND_CHART_MARGIN_BOTTOM
+    plot_width = width - margin_left - margin_right
+    plot_height = height - margin_top - margin_bottom
+    plot_bottom = margin_top + plot_height
+    n = len(sampled)
+
+    def x_for(i: int) -> float:
+        return margin_left if n == 1 else margin_left + (i / (n - 1)) * plot_width
+
+    def y_for(pct: float) -> float:
+        clamped = max(0.0, min(pct, 100.0))
+        return margin_top + (1 - clamped / 100) * plot_height
+
+    axis_color = "#d1d5db"
+    text_color = "#6b7280"
+    line_color = "#7fae87"
+    accent_color = "#2e7d32"
+
+    lines_parts = [
+        f'<line x1="{margin_left}" y1="{margin_top}" x2="{margin_left}" y2="{plot_bottom}" '
+        f'stroke="{axis_color}" stroke-width="1" />',
+        f'<line x1="{margin_left}" y1="{plot_bottom}" x2="{margin_left + plot_width}" y2="{plot_bottom}" '
+        f'stroke="{axis_color}" stroke-width="1" />',
+    ]
+
+    text_parts = []
+    for pct_tick in (0, 50, 100):
+        ty = y_for(pct_tick)
+        text_parts.append(
+            f'<text x="{margin_left - 4}" y="{ty + 3:.1f}" text-anchor="end">{pct_tick}%</text>'
+        )
+
+    label_indices = sorted({0, n // 2, n - 1}) if n >= 3 else sorted({0, n - 1})
+    for i, label in _axis_time_labels(sampled, label_indices):
+        lx = x_for(i)
+        anchor = "start" if i == 0 else ("end" if i == n - 1 else "middle")
+        text_parts.append(
+            f'<text x="{lx:.1f}" y="{plot_bottom + 12}" text-anchor="{anchor}">{escape(label)}</text>'
+        )
+
+    axis_parts = lines_parts + [
+        f'<g font-family="system-ui, sans-serif" font-size="9" fill="{text_color}">'
+        + "".join(text_parts)
+        + "</g>"
+    ]
+
+    data_points = [(x_for(i), y_for(s.availability_pct)) for i, s in enumerate(sampled)]
+    path_d = _catmull_rom_path(data_points)
+
+    dot_parts = []
+    for i, (cx, cy) in enumerate(data_points):
+        is_latest = i == n - 1
+        radius = 4 if is_latest else 3
+        fill = accent_color if is_latest else line_color
+        dot_parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius}" fill="{fill}" />')
+
+    latest = sampled[-1]
+    title = (
+        f"{latest.availability_pct:.1f}% available as of "
+        f"{_format_sgt_timestamp(latest.scan_ended_at)}"
+    )
+
+    return Markup(
+        '<details class="trend-toggle">'
+        '<summary aria-label="Show availability trend">Trend</summary>'
+        '<div class="trend-popup">'
+        f'<svg class="trend-sparkline" viewBox="0 0 {width} {height}" width="{width}" height="{height}">'
+        f"<title>{escape(title)}</title>"
+        + "".join(axis_parts)
+        + f'<path d="{path_d}" fill="none" stroke="{line_color}" stroke-width="2" '
+        'stroke-linejoin="round" stroke-linecap="round" />'
+        + "".join(dot_parts)
+        + "</svg>"
+        "</div>"
+        "</details>"
+    )
+
+
 _jinja_env.globals["booking_url"] = _booking_url
 _jinja_env.globals["status_label"] = _status_label
 _jinja_env.globals["short_date"] = _short_date_label
 _jinja_env.globals["availability_style"] = _availability_style
 _jinja_env.globals["most_available_count"] = config.MOST_AVAILABLE_COUNT
+_jinja_env.globals["trend_sparkline"] = _trend_sparkline_svg
 
 
 @dataclass
@@ -75,9 +223,13 @@ class ReportData:
     day_sections: list[DaySection] = field(default_factory=list)
     failed_calls: list[FailedCall] = field(default_factory=list)
     venues: list[str] = field(default_factory=list)
+    history_by_performance_id: dict[int, PerformanceHistory] = field(default_factory=dict)
 
 
-def build_report(result: ScanResult) -> ReportData:
+def build_report(result: ScanResult, history: History | None = None) -> ReportData:
+    history = history or History()
+    history_by_performance_id = {p.performance_id: p for p in history.performances}
+
     # total_shows is len(result.shows) directly, not a sum over day_sections:
     # collector.run_scan unions in any date a show's display_date points to,
     # but keeping this as a direct count (rather than relying on that
@@ -108,6 +260,7 @@ def build_report(result: ScanResult) -> ReportData:
         day_sections=day_sections,
         failed_calls=result.failed_calls,
         venues=sorted({s.venue_name for s in result.shows}),
+        history_by_performance_id=history_by_performance_id,
     )
 
 

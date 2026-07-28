@@ -43,10 +43,12 @@ jobs:
         if: ${{ !inputs.skip_tests }}
         run: python -m unittest discover -s tests -v
 
-      - name: Download latest scan result
+      - name: Download latest scan result and history
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: gh release download latest --repo "$GITHUB_REPOSITORY" --pattern "scan_result.json" --dir artifacts --clobber
+        run: |
+          gh release download latest --repo "$GITHUB_REPOSITORY" \
+            --pattern "scan_result.json" --pattern "history.json" --dir artifacts --clobber
 
       - name: Generate report
         run: |

@@ -5,7 +5,7 @@ import logging
 from collections import Counter
 from datetime import date, datetime
 
-from . import api_client, collector, config, persistence, report
+from . import api_client, collector, config, history, persistence, report
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -47,6 +47,10 @@ def _run_scan(args: argparse.Namespace) -> None:
 
     persistence.save_scan_result_json(result)
 
+    existing_history = persistence.load_history_json()
+    merged_history = history.merge_snapshot(existing_history, result)
+    persistence.save_history_json(merged_history)
+
     if result.failed_calls:
         counts = Counter(f.kind for f in result.failed_calls)
         logging.warning("scan completed with failed calls: %s", dict(counts))
@@ -54,8 +58,9 @@ def _run_scan(args: argparse.Namespace) -> None:
 
 def _run_report(args: argparse.Namespace) -> None:
     result = persistence.load_scan_result_json()
+    scan_history = persistence.load_history_json()
 
-    report_data = report.build_report(result)
+    report_data = report.build_report(result, scan_history)
     report_text = report.render_report_text(report_data)
     print(report_text)
 
