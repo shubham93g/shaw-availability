@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  cloudflare:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

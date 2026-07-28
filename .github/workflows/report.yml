@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  report:
+  generate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -60,7 +60,7 @@ jobs:
   # check to `if` drops GitHub Actions' default "only run if everything
   # before this succeeded" behavior, so it has to be written back in.
   deploy:
-    needs: report
+    needs: generate
     if: ${{ success() && inputs.deploy }}
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
