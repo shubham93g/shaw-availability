@@ -298,7 +298,14 @@ when you start it.
 
 Cloudflare Pages (`<CLOUDFLARE_PROJECT_NAME>.pages.dev` — a name chosen at
 project creation, not tied to any account identity) is the live report,
-updated by `deploy.yml` on every scan. GitHub Pages
+updated by `deploy.yml` on every scan. Since every run creates a new,
+permanent-by-default Pages deployment (`wrangler pages deploy` doesn't
+overwrite prior ones), `deploy.yml` also deletes old production deployments
+down to the 10 most recent right after each deploy — via the Cloudflare API
+directly (`wrangler pages deployment delete` can't skip its confirmation
+prompt in a non-interactive CI shell). This is pure housekeeping: the live
+site is always served from `shaw-availability.pages.dev`, which points at
+the latest deployment regardless of how many older ones exist. GitHub Pages
 (`<owner>.github.io/shaw-availability/`) is a static redirect to that URL:
 `pages-redirect.yml` publishes a small page there once
 (meta-refresh + JS `location.replace`, preserving any query string) and
