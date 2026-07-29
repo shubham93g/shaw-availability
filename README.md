@@ -256,6 +256,15 @@ resulting run is labeled `Scan (cron)` in the Actions tab rather than
    wrangler deploy
    ```
 
+This local deploy is only needed for the very first deploy (or local
+testing) — after that, `.github/workflows/deploy-cron-trigger.yml` deploys
+automatically whenever a push to `main` touches `cron-trigger/**` (it's also
+runnable manually from the Actions tab via `workflow_dispatch`). That
+workflow reuses the `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets
+from the [Hosting](#hosting) setup below, but the token needs **Workers
+Scripts: Edit** added to its permissions in addition to Pages: Edit — see
+the note in Hosting step 2.
+
 **Verifying it works:**
 
 - After `wrangler deploy`, the Cloudflare dashboard (Workers & Pages →
@@ -307,6 +316,12 @@ One-time setup for the Cloudflare Pages side:
    shaw-availability --production-branch=main` (or via the dashboard).
 2. Create a Cloudflare API token scoped to **Cloudflare Pages — Edit**:
    https://dash.cloudflare.com/profile/api-tokens
+
+   If you're also using `deploy-cron-trigger.yml` to deploy the
+   [Cron trigger](#cron-trigger-cloudflare-worker) Worker via CI, add
+   **Workers Scripts: Edit** to this same token's permissions (editing an
+   existing token's permissions doesn't change its value, so no secret
+   update is needed afterward).
 3. Add it, plus the Cloudflare account ID, as GitHub Actions repo secrets:
    `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 4. Add the project name as a GitHub Actions repo variable (Settings →
