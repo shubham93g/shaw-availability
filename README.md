@@ -164,9 +164,9 @@ graph, instead of three unrelated top-level runs:
   every run for `scan_result.json`; `history.json`'s own overwrite is what
   persists its accumulated merge across runs, since nothing else about this
   release is versioned). It only reacts to `workflow_dispatch` — it no longer
-  self-schedules. Runs are triggered externally — every 30 minutes from
-  7:00am to 11:00pm SGT, and every 2 hours overnight (11:00pm, 1:00am,
-  3:00am, 5:00am, 7:00am SGT) — by a Cloudflare Worker on a Cron Trigger
+  self-schedules. Runs are triggered externally — every hour from 7:00am to
+  12:00am SGT, plus a single overnight run at 4:00am SGT — by a Cloudflare
+  Worker on a Cron Trigger
   (see [Cron trigger](#cron-trigger-cloudflare-worker) below) that calls
   GitHub's `workflow_dispatch` API, passing a `source: cron` input so the
   run can be told apart from a human-initiated dispatch (which leaves
@@ -203,7 +203,7 @@ Each of scan.yml, report.yml, and deploy.yml has its own `concurrency` group
 (`scan`, `report`, `deploy-cloudflare`) with `cancel-in-progress: true`, so a
 newer run cancels whatever's still running instead of queuing behind it —
 this matters most for scan.yml, since the Cloudflare Worker can dispatch a
-new run every 30 minutes even if a prior one is still going. `deploy.yml`'s
+new run every hour even if a prior one is still going. `deploy.yml`'s
 `deploy-cloudflare` group is intentionally separate from
 `pages-redirect.yml`'s `deploy-github-pages` group: the two publish to
 different targets (Cloudflare Pages vs. GitHub Pages) and were never meant
@@ -222,9 +222,9 @@ machine being awake and has neither of those problems.
 
 `cron-trigger/` is a small Cloudflare Worker that replaces GitHub Actions'
 native `schedule: cron` (see [Scheduling](#scheduling) above for why). Every
-30 minutes from 7:00am to 11:00pm SGT, and every 2 hours overnight (11:00pm,
-1:00am, 3:00am, 5:00am, 7:00am SGT), it calls GitHub's `workflow_dispatch`
-API to kick off `scan.yml`, passing `source: cron` as an input so the
+hour from 7:00am to 12:00am SGT, plus a single overnight run at 4:00am SGT,
+it calls GitHub's `workflow_dispatch` API to kick off `scan.yml`, passing
+`source: cron` as an input so the
 resulting run is labeled `Scan (cron)` in the Actions tab rather than
 `Scan (manual)`. Its dispatch target branch is hardcoded to `main`
 (`GITHUB_REF` in `cron-trigger/wrangler.toml`).
@@ -260,17 +260,17 @@ resulting run is labeled `Scan (cron)` in the Actions tab rather than
 
 - After `wrangler deploy`, the Cloudflare dashboard (Workers & Pages →
   `shaw-availability-cron` → Triggers) should list two Cron Triggers —
-  `0 15,17,19,21 * * *` and `0,30 23,0-14 * * *` — which together fire every
-  30 minutes from 7:00am to 10:30pm SGT, and every 2 hours overnight (Cron
+  `1 20 * * *` and `1 23,0-16 * * *` — which together fire hourly from
+  7:01am to 12:01am SGT, plus a single overnight run at 4:01am SGT (Cron
   Triggers run in UTC; SGT is UTC+8 with no DST, so the daytime window is
-  23:00 the previous day through 14:30 UTC, and the overnight triggers land
-  at 15:00, 17:00, 19:00, and 21:00 UTC).
+  23:01 the previous day through 16:01 UTC, and the overnight trigger lands
+  at 20:01 UTC).
 - To fire a test run without waiting for the schedule, use the dashboard's
   "Trigger Cron Trigger" button under the Triggers tab, or run locally:
   ```bash
   wrangler dev
   # in another terminal:
-  curl "http://localhost:8787/__scheduled?cron=0%2C30+23%2C0-14+*+*+*"
+  curl "http://localhost:8787/__scheduled?cron=1+23%2C0-16+*+*+*"
   ```
 - Either way, check the repo's Actions tab — a new `scan.yml` run should
   start within a few seconds.
