@@ -300,12 +300,20 @@ Cloudflare Pages (`<CLOUDFLARE_PROJECT_NAME>.pages.dev` — a name chosen at
 project creation, not tied to any account identity) is the live report,
 updated by `deploy.yml` on every scan. Since every run creates a new,
 permanent-by-default Pages deployment (`wrangler pages deploy` doesn't
-overwrite prior ones), `deploy.yml` also deletes old production deployments
-down to the 10 most recent right after each deploy — via the Cloudflare API
-directly (`wrangler pages deployment delete` can't skip its confirmation
-prompt in a non-interactive CI shell). This is pure housekeeping: the live
-site is always served from `shaw-availability.pages.dev`, which points at
-the latest deployment regardless of how many older ones exist. GitHub Pages
+overwrite prior ones), `deploy.yml` also prunes old production deployments
+down to the 10 most recent right after each deploy. This runs entirely
+through `wrangler` via `cloudflare/wrangler-action@v4` (no raw Cloudflare API
+calls): the `cloudflare` job lists deployments (`wrangler pages deployment
+list --json`, which returns the full history newest-first) and computes
+which IDs fall outside the newest 10; a second job,
+`cleanup-old-pages-deployments`, fans that list out across a matrix — one
+`wrangler pages deployment delete <id> -f` per deployment, run in parallel
+(capped at 5 at a time). The `-f`/`--force` flag is required in CI because
+`wrangler pages deployment delete` otherwise prompts for interactive
+confirmation and silently no-ops (defaults to "no") in a non-interactive
+shell. This is pure housekeeping: the live site is always served from
+`shaw-availability.pages.dev`, which points at the latest deployment
+regardless of how many older ones exist. GitHub Pages
 (`<owner>.github.io/shaw-availability/`) is a static redirect to that URL:
 `pages-redirect.yml` publishes a small page there once
 (meta-refresh + JS `location.replace`, preserving any query string) and
