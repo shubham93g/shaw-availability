@@ -39,15 +39,22 @@ jobs:
         run: |
           set -euo pipefail
           keep=10
-          old_ids=$(curl -sf \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PROJECT_NAME/deployments" \
-            | jq -r --argjson keep "$keep" \
-              '[.result[] | select(.environment == "production")] | sort_by(.created_on) | reverse | .[$keep:] | .[].id')
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PROJECT_NAME/deployments"
+          all=$(mktemp)
+          page=1
+          total_pages=1
+          while [ "$page" -le "$total_pages" ]; do
+            resp=$(curl -sf -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base?page=$page")
+            echo "$resp" | jq -r '.result[] | select(.environment == "production") | "\(.created_on)\t\(.id)"' >> "$all"
+            total_pages=$(echo "$resp" | jq '.result_info.total_pages')
+            page=$((page + 1))
+          done
+          echo "Found $(wc -l < "$all") production deployments across $((total_pages)) page(s)"
+          old_ids=$(sort -r "$all" | tail -n "+$((keep + 1))" | cut -f2)
           for id in $old_ids; do
             echo "Deleting old Pages deployment $id"
             curl -sf -X DELETE \
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PROJECT_NAME/deployments/$id" \
+              "$base/$id" \
               || echo "::warning::Failed to delete Pages deployment $id"
           done
