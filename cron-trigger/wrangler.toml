@@ -2,6 +2,8 @@ name = "shaw-availability-cron"
 main = "src/index.js"
 compatibility_date = "2026-07-21"
 workers_dev = false
+# Deployed automatically by .github/workflows/deploy-cron-trigger.yml on
+# every push to main that touches cron-trigger/** (or via manual dispatch).
 
 [triggers]
 # Cloudflare Cron Triggers run in UTC; SGT is UTC+8 with no DST.
